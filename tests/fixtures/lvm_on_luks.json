@@ -1,0 +1,12 @@
+{
+  "name": "dm-0",
+  "type": "LVM",
+  "connection": "Mapper",
+  "capacity_gb": 2000,
+  "usage_percent": 95,
+  "health_ok": true,
+  "physical_path": "/devices/virtual/block/dm-0",
+  "parent": "nvme0n1p3",
+  "is_luks": true,
+  "serial": "MAPPER_LUKS_LVM"
+}

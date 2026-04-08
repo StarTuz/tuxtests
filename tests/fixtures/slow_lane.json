@@ -1,0 +1,10 @@
+{
+  "name": "sda",
+  "type": "NVMe",
+  "connection": "USB 2.0 (High-Speed)",
+  "capacity_gb": 1024,
+  "usage_percent": 50,
+  "health_ok": true,
+  "physical_path": "/devices/pci0000:00/0000:00:14.0/usb2/2-1",
+  "serial": "EXT_NVME_001"
+}

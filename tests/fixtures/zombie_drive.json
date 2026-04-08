@@ -1,0 +1,11 @@
+{
+  "name": "sdb",
+  "type": "HDD",
+  "connection": "SATA 3.0",
+  "capacity_gb": 4000,
+  "usage_percent": 80,
+  "health_ok": false,
+  "smartctl_exit_code": 4,
+  "physical_path": "/devices/pci0000:00/0000:00:1f.2/ata2/host1/target1:0:0/1:0:0:0",
+  "serial": "ZOMBIE_HDD_FAIL"
+}
