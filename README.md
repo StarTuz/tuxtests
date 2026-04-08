@@ -18,6 +18,13 @@ TuxTests is a high-performance, memory-safe Linux hardware diagnostic and sugges
 - **Async Runtime**: `tokio`
 - **Hardware APIs**: `libudev`, `sysinfo`, `procfs`
 - **Serialization**: `serde`, `serde_json`
+- **Configuration**: `--set-ollama-model <MODEL>`: Specifically target the physical offline model executing natively (e.g., `mistral`, `gemma`).
+- **Storage**: Persistent configuration in `~/.config/tuxtests/config.toml` with local safety fallbacks for read-only environments.
+
+---
+
+## 🔒 Security and Permissions
+
 - **Security**: `keyring` (Secure API key storage), `Polkit` (Privilege elevation)
 - **Networking**: `reqwest` (Async HTTP with 60s safeguards)
 
@@ -48,10 +55,10 @@ tuxtests --full-bench
 
 TuxTests emphasizes reliability through:
 - **Regression Testing**: A suite of mocked hardware topographies (LVM on LUKS, USB/NVMe slow lanes, Zombie drives).
-- **GitHub Actions**: Automated pipelines for `clippy`, `fmt`, and hardware-fixture verification.
+- **GitHub Actions**: Automated pipelines with `libudev-dev` support for `clippy`, `fmt`, and hardware-fixture verification.
 
 ## 📦 Documentation
 
 - [CLI.md](CLI.md): Detailed Command Line Interface guide.
-- [GEMINI.md](GEMINI.md): AI Pipeline and JSON Schema definitions.
+- [GEMINI.md](GEMINI.md): AI Pipeline and JSON Schema definitions (Dynamic v1beta mapping).
 - [SKILLS.md](SKILLS.md): Technical details on `udev` and RAG strategies.

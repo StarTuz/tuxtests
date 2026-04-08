@@ -21,6 +21,8 @@ This document provides a comprehensive guide to the command-line interface of Tu
   - **Storage**: System Keyring (KWallet, GNOME Keyring, or Secret Service).
 - `--set-ollama-url <URL>`: Configures the endpoint for local Ollama instances.
   - **Default**: `http://localhost:11434`.
+- `--set-ollama-model <MODEL>`: Specifically targets the local model (e.g., `gemma4:e4b`).
+  - **Default**: `mistral`.
 
 ---
 
@@ -35,6 +37,7 @@ API keys are never stored in plain text or environment variables. TuxTests uses 
 ### Polkit Elevation
 
 Privileged actions like reading S.M.A.R.T. data (`smartctl`) are handled via `pkexec`.
+
 - TuxTests only requests elevation when strictly necessary (e.g., when the `--full-bench` flag is used).
 - Individual commands are wrapped, meaning the tool never runs its entire logic as root.
 
@@ -54,9 +57,11 @@ The `--full-bench` command includes a synthetic write test to measure drive thro
 ### "smartmontools missing or execution failed"
 
 If you see this anomaly in your AI report, it means `smartctl` is not installed on your host system.
+
 - **Fix**: Install it via your package manager (e.g., `sudo pacman -S smartmontools` or `sudo apt install smartmontools`).
 
 ### "Gemini API key natively blocked or missing"
 
 This means the tool couldn't find a key in your system vault.
+
 - **Fix**: Run `tuxtests --set-gemini-key "YOUR_KEY_HERE"` once to initialize the secure storage.
