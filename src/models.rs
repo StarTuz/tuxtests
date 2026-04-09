@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TuxPayload {
+    pub summary_header: String,
     pub system: SystemInfo,
     pub drives: Vec<DriveInfo>,
 

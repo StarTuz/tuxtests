@@ -79,5 +79,6 @@ pub fn retrieve_kernel_anomalies(drive: &DriveInfo, log_output: &str) -> Vec<Str
         }
     }
 
+    anomalies.truncate(20);
     anomalies
 }

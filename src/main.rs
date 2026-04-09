@@ -89,6 +89,7 @@ async fn main() {
             .expect("Mock fixture physically deviated from the strict DriveInfo map!");
 
         let payload = models::TuxPayload {
+            summary_header: "System has 1 drives, 0 are USB. Maximum topology depth detected: 3.".to_string(),
             system: models::SystemInfo {
                 cpu: "Mock Sandbox CPU (Threadripper Stub)".to_string(),
                 ram_gb: 128,
@@ -149,7 +150,21 @@ async fn main() {
             storage_drives.push(drive);
         }
 
+        let total_drives = storage_drives.len();
+        let usb_count = storage_drives.iter().filter(|d| d.connection.to_lowercase().contains("usb")).count();
+        let max_depth = storage_drives
+            .iter()
+            .flat_map(|d| d.topology.iter().map(|t| t.level))
+            .max()
+            .unwrap_or(0);
+
+        let summary_header = format!(
+            "System has {} drives, {} are USB. Maximum topology depth detected: {}.",
+            total_drives, usb_count, max_depth
+        );
+
         let payload = models::TuxPayload {
+            summary_header,
             system: sys_specs,
             drives: storage_drives,
             benchmarks,
