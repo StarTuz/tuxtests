@@ -25,6 +25,9 @@ pub struct LsblkDevice {
     pub fstype: Option<String>,
     pub uuid: Option<String>,
     pub label: Option<String>,
+
+    #[serde(rename = "fsuse%")]
+    pub fsuse_percent: Option<String>,
 }
 
 /// Executes an unprivileged subprocess polling the kernel block topology.
@@ -36,7 +39,7 @@ pub fn scan_drives() -> Vec<(DriveInfo, Option<String>)> {
             "-J",
             "-b",
             "-o",
-            "NAME,TYPE,SIZE,PKNAME,MOUNTPOINTS,TRAN,FSTYPE,UUID,LABEL",
+            "NAME,TYPE,SIZE,PKNAME,MOUNTPOINTS,TRAN,FSTYPE,UUID,LABEL,FSUSE%",
         ])
         .output();
 
@@ -101,8 +104,15 @@ pub fn scan_drives() -> Vec<(DriveInfo, Option<String>)> {
             .into_iter()
             .flatten()
             .collect();
-        
+
         let mount_target = mountpoints_vec.first().cloned();
+
+        let usage_percent = dev
+            .fsuse_percent
+            .unwrap_or_default()
+            .trim_end_matches('%')
+            .parse::<u8>()
+            .unwrap_or(0);
 
         let mapped_drive = DriveInfo {
             name: dev.name,
@@ -110,10 +120,10 @@ pub fn scan_drives() -> Vec<(DriveInfo, Option<String>)> {
             connection,
             capacity_gb,
 
-            usage_percent: 0,
+            usage_percent,
             health_ok: true,
             physical_path,
-            
+
             fstype: dev.fstype,
             uuid: dev.uuid,
             label: dev.label,

@@ -115,7 +115,15 @@ async fn main() {
         let mut benchmarks = std::collections::BTreeMap::new();
         let mut kernel_anomalies = Vec::new();
 
+        // [NEW] Lazily fetch kernel logs using 3-tier privilege bridge just once
+        let global_log_output = ai::rag::fetch_kernel_logs();
+
         for (mut drive, mount_opt) in hardware::storage::scan_drives() {
+            // [NEW] Perform identifier-based anomaly filtering locally per drive
+            let mut drive_anomalies =
+                ai::rag::retrieve_kernel_anomalies(&drive, &global_log_output);
+            kernel_anomalies.append(&mut drive_anomalies);
+
             if args.full_bench {
                 println!(
                     "🔒 Triggering Privileged Polkit S.M.A.R.T diagnostic on {}...",

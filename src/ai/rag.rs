@@ -1,30 +1,81 @@
 //! Hybrid Log-Scraping RAG Engine
 //! Instead of semantic vector search, uses Identifier-Based Filtering on local kernel logs.
 
-// use std::process::Command;
+use crate::models::DriveInfo;
+use std::process::Command;
+
+/// Fetches the raw kernel log buffer natively using the 3-Tier Privilege Bridge.
+pub fn fetch_kernel_logs() -> String {
+    let mut log_output = String::new();
+
+    // The 3-Tier Privilege Bridge
+
+    // Attempt 1: Native dmesg (Standard & Quiet)
+    if let Ok(output) = Command::new("dmesg").output() {
+        if output.status.success() {
+            log_output = String::from_utf8_lossy(&output.stdout).to_string();
+        }
+    }
+
+    // Attempt 2: Silent Fallback to journalctl (often readable if user is in wheel/adm group)
+    if log_output.is_empty() {
+        if let Ok(output) = Command::new("journalctl")
+            .args(["-k", "--no-pager", "-n", "500"])
+            .output()
+        {
+            if output.status.success() {
+                log_output = String::from_utf8_lossy(&output.stdout).to_string();
+            }
+        }
+    }
+
+    // Attempt 3: The Escalator (pkexec dmesg)
+    if log_output.is_empty() {
+        if let Ok(output) = Command::new("pkexec").arg("dmesg").output() {
+            if output.status.success() {
+                log_output = String::from_utf8_lossy(&output.stdout).to_string();
+            }
+        }
+    }
+
+    log_output
+}
 
 /// Parses a local log buffer (dmesg or syslog) for occurrences of specific block identifiers.
 /// Captures critical warnings like "I/O errors" or "reset high-speed USB device" globally tied to the block or its serial.
-pub fn retrieve_kernel_anomalies(device_node: &str, serial: &str) -> Vec<String> {
-    // In actual implementation, invoke `dmesg` or read `/var/log/syslog` natively
+pub fn retrieve_kernel_anomalies(drive: &DriveInfo, log_output: &str) -> Vec<String> {
     let mut anomalies = Vec::new();
 
-    // Simulated dummy logs hitting identical logic
-    let simulated_dmesg = vec![
-        format!("usb 2-1: reset high-speed USB device number 3"),
-        format!(
-            "blk_update_request: I/O error, dev {}, sector 1234",
-            device_node
-        ),
-        format!(
-            "nvme nvme0: controller is down; will reset: serial {}",
-            serial
-        ),
-    ];
+    // Build a list of matchable target strings for this device
+    let mut targets = vec![drive.name.clone()];
 
-    for line in simulated_dmesg {
-        if line.contains(device_node) || line.contains(serial) {
-            anomalies.push(line);
+    if let Some(serial) = &drive.serial {
+        if !serial.trim().is_empty() {
+            targets.push(serial.clone());
+        }
+    }
+
+    for node in &drive.topology {
+        if !node.sysname.trim().is_empty() {
+            targets.push(node.sysname.clone());
+        }
+    }
+
+    // Filter logs for critical errors related to these targets
+    for line in log_output.lines() {
+        let l_lower = line.to_lowercase();
+        // Standard kernel anomaly keywords: I/O errors, resets, aborts
+        if l_lower.contains("error")
+            || l_lower.contains("reset")
+            || l_lower.contains("abort")
+            || l_lower.contains("fail")
+        {
+            for target in &targets {
+                if line.contains(target) {
+                    anomalies.push(line.to_string());
+                    break; // Move to next line
+                }
+            }
         }
     }
 
