@@ -7,13 +7,15 @@ This document provides a comprehensive guide to the command-line interface of Tu
 ### Basic Analysis
 
 - `-a, --analyze`: Performs a standard, unprivileged hardware scan.
-  - **Scope**: CPU, RAM, Block Device Topology, USB Connection Speeds.
+  - **Scope**: CPU, RAM, kernel, hostname, motherboard, block device topology, and USB connection speeds.
   - **Privileges**: None (does not prompt for password).
 - `--full-bench`: Performs a deep, privileged diagnostic scan.
   - **Scope**: Includes everything in `--analyze`, plus S.M.A.R.T. health checks and 1GB buffered write benchmarks.
   - **Privileges**: Requires `pkexec` (Polkit) for drive health monitoring.
 - `--dump-payload`: Emits the collected `TuxPayload` as pretty-printed JSON to `stdout` and skips AI analysis.
   - **Integration Note**: Progress and diagnostic messages go to `stderr`, so `stdout` remains machine-readable.
+- `--mock <PATH>`: Loads a single `DriveInfo` fixture from disk and routes it through the analyzer or payload dumper.
+  - **Use Case**: Regression testing and UI work without scanning live hardware.
 
 ### Configuration
 

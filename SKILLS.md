@@ -18,7 +18,7 @@ In `src/hardware/connection.rs`, the logic involves:
 - `"20000"` -> USB 3.2 Gen 2x2
 
 ## 2. Safety and Polkit Use
-Iterating `udev` device trees is safe and does not require root. However, triggering S.M.A.R.T. tests or creating the 1GB dummy file (benchmarks) does heavily dictate root privileges.
+Iterating `udev` device trees is safe and does not require root. However, reading S.M.A.R.T. health through `smartctl` and creating the 1GB benchmark file do touch privileged or high-impact paths and are guarded carefully.
 
 If we need deep `sysfs` capabilities beyond the standard unprivileged read, `/dev/sdX` access is brokered via Polkit rather than exposing raw `sudo` commands directly to the user.
 
@@ -29,7 +29,7 @@ Instead of complex vector embeddings, TuxTests utilizes **Identifier-Based Filte
 ### Pattern: Contextual Log Retrieval
 The `src/ai/rag.rs` engine performs the following:
 1. Identifies hardware handles (`/dev/sda`) and serial numbers (`XYZ123`).
-2. Greps `dmesg` and `journalctl` for those specific identifiers.
+2. Filters `dmesg` and `journalctl` output for those specific identifiers.
 3. Extracts relevant kernel warnings (e.g., "I/O errors", "reset high-speed device") to augment the LLM context.
 
 ## 4. Mock Hardware Regression Testing
@@ -47,10 +47,19 @@ TuxTests utilizes a centralized `src/models.rs` to define the hardware footprint
 
 ### Pattern: Edge-Case Handling via Option<T>
 Instead of brittle string parsing, the core engine deserializes hardware snapshots into strongly-typed structs.
-- **Optional Attributes**: Fields like `is_luks`, `parent`, or `smartctl_exit_code` are wrapped in `Option<T>`. This allows a single `DriveInfo` struct to represent anything from a standard SATA drive to a complex encrypted LVM mapper without type explosions.
+- **Optional Attributes**: Fields like `serial`, `is_luks`, `parent`, `motherboard`, or `smartctl_exit_code` are wrapped in `Option<T>` where appropriate. This allows a single hardware model to represent anything from a standard SATA drive to a complex encrypted LVM mapper without type explosions.
 - **Serialization Determinism**: The system uses `std::collections::BTreeMap` for the benchmarks collection. This guarantees that drives are always presented to the LLM in a consistent, alphabetic order, preventing positional bias during analysis.
 
-## 6. Secret Management via Keyring
+## 6. Benchmark Guardrails
+
+The throughput path now enforces both absolute and relative free-space limits before writing a temporary benchmark file.
+
+### Current Safety Rules:
+- More than **5GB free** is required.
+- At least **10% free capacity** is required.
+- Benchmark diagnostics are emitted on `stderr` so JSON payload dumping can keep `stdout` machine-readable.
+
+## 7. Secret Management via Keyring
 
 To avoid leaking API keys in logs or process trees, TuxTests utilizes the `keyring` crate.
 

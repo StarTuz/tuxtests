@@ -9,7 +9,11 @@ Hardware scan data (from `sysinfo`, `udev`, `lsblk`, `smartctl`) and retrieved l
 ```json
 {
   "system": {
+    "os_release": {
+      "PRETTY_NAME": "Garuda Linux"
+    },
     "hostname": "workstation-01",
+    "kernel_version": "6.13.5-zen1-1-zen",
     "cpu": "AMD Ryzen 9 5900X",
     "ram_gb": 64,
     "motherboard": "ASUSTeK COMPUTER INC. ROG STRIX B550-I GAMING"
