@@ -13,9 +13,11 @@ pub async fn invoke_ollama(model: &str, system_prompt: &str, payload_json: &str)
 
     use ollama_rs::generation::options::GenerationOptions;
 
-    let req = GenerationRequest::new(model.to_string(), payload_json.to_string())
-        .system(system_prompt.to_string())
-        .options(GenerationOptions::default().num_ctx(8192));
+    // Explicitly merge instructions and payload as a single user prompt! Model instruct templates (especially Gemma) often fail dynamically handling separate .system() flags due to lacking a native 'system' role.
+    let merged_prompt = format!("{}\n\n### HARDWARE PAYLOAD (JSON) ###\n{}", system_prompt, payload_json);
+
+    let req = GenerationRequest::new(model.to_string(), merged_prompt)
+        .options(GenerationOptions::default().num_ctx(16384));
 
     match ollama.generate(req).await {
         Ok(res) => Some(res.response),

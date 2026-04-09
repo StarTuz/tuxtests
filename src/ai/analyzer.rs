@@ -7,7 +7,7 @@ const SYSTEM_PROMPT: &str = "You are an expert Linux diagnostics agent. Analyze 
 /// Main AI routing module handling data serialization.
 pub async fn run_analysis(payload: &TuxPayload) {
     let config = config::AppConfig::load();
-    let payload_str = serde_json::to_string_pretty(payload)
+    let payload_str = serde_json::to_string(payload)
         .expect("Critically failed to mathematically stringify TuxPayload models");
 
     let output = if config.provider == "gemini" {
