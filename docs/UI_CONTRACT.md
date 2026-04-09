@@ -1,0 +1,60 @@
+# TuxTests UI Contract
+
+This document defines the supported machine-readable interfaces a UI or automation layer should rely on.
+
+## Stable Entry Points
+
+### `tuxtests --print-config`
+
+Purpose: Return the normalized runtime configuration.
+
+Behavior:
+- Writes pretty-printed JSON to `stdout`
+- Exits without running hardware scans or AI analysis
+- Uses the same normalization logic as the live runtime
+
+Example shape:
+
+```json
+{
+  "provider": "ollama",
+  "ollama_model": "mistral",
+  "ollama_url": "http://127.0.0.1:11434"
+}
+```
+
+### `tuxtests --dump-payload`
+
+Purpose: Return the collected hardware scan payload without AI analysis.
+
+Behavior:
+- Writes pretty-printed `TuxPayload` JSON to `stdout`
+- Writes progress, warnings, and diagnostics to `stderr`
+- Performs the same unprivileged scan as `--analyze`
+
+### `tuxtests --full-bench --dump-payload`
+
+Purpose: Return the enriched hardware payload including SMART and benchmark results.
+
+Behavior:
+- Writes pretty-printed `TuxPayload` JSON to `stdout`
+- Writes progress, warnings, and diagnostics to `stderr`
+- Includes SMART exit codes, benchmark results, and privilege-related anomalies when available
+
+## Output Rules
+
+- Treat `stdout` as the data channel for `--print-config` and `--dump-payload`.
+- Treat `stderr` as the diagnostics channel for progress messages, warnings, and errors.
+- Do not parse human-readable AI markdown for UI state.
+- Prefer rendering from `TuxPayload` JSON and using AI output only as an optional explanatory layer.
+
+## Supported Schema Sources
+
+- `TuxPayload`: [src/models.rs](/home/startux/Code/tuxtests/src/models.rs)
+- CLI behavior: [src/main.rs](/home/startux/Code/tuxtests/src/main.rs)
+- AI payload example: [GEMINI.md](/home/startux/Code/tuxtests/GEMINI.md)
+
+## Notes
+
+- The AI analysis path remains human-oriented and returns Markdown.
+- Frontends should treat provider errors, missing keyring state, Polkit denials, and benchmark skips as diagnostic events surfaced on `stderr`.

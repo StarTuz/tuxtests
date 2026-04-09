@@ -32,11 +32,27 @@ struct Args {
     /// Supply a mock JSON fixture for pure logic AI processing isolated from hardware.
     #[arg(long)]
     mock: Option<String>,
+
+    /// Print the normalized runtime configuration as JSON and exit.
+    #[arg(long)]
+    print_config: bool,
+
+    /// Emit the collected hardware payload as JSON instead of running AI analysis.
+    #[arg(long)]
+    dump_payload: bool,
 }
 
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
+
+    if args.print_config {
+        match serde_json::to_string_pretty(&ai::config::AppConfig::load()) {
+            Ok(config_json) => println!("{}", config_json),
+            Err(err) => eprintln!("❌ Failed to serialize active configuration: {}", err),
+        }
+        return;
+    }
 
     // AI Persistence Configuration Setup
     if args.set_llm_provider.is_some()
@@ -84,7 +100,7 @@ async fn main() {
 
     // Keyring Ingestion
     if let Some(key) = args.set_gemini_key {
-        println!("🔑 Attempting to secure Gemini API key inside native credential vault...");
+        eprintln!("🔑 Attempting to secure Gemini API key inside native credential vault...");
         match keyring::Entry::new("tuxtests", "gemini_api") {
             Ok(entry) => {
                 if entry.set_password(&key).is_ok() {
@@ -106,7 +122,7 @@ async fn main() {
 
     // Mock Offline Mode
     if let Some(mock_file) = args.mock {
-        println!(
+        eprintln!(
             "🛠️ Injecting Mock Regression Fixture directly into AI Analyzer: {}",
             mock_file
         );
@@ -140,80 +156,95 @@ async fn main() {
             fstab: Vec::new(),
         };
 
-        // Fire safely to models directly without Polkit
-        ai::analyzer::run_analysis(&payload).await;
+        if args.dump_payload {
+            print_payload_json(&payload);
+        } else {
+            // Fire safely to models directly without Polkit
+            ai::analyzer::run_analysis(&payload).await;
+        }
         return;
     }
 
-    if args.analyze || args.full_bench {
-        println!("🚀 Initiating TuxTests Hardware Analysis...");
+    if args.analyze || args.full_bench || args.dump_payload {
+        eprintln!("🚀 Initiating TuxTests Hardware Analysis...");
+        let payload = build_payload(args.full_bench);
 
-        let sys_specs = hardware::system::get_system_specs();
-        let mut storage_drives = Vec::new();
-        let mut benchmarks = std::collections::BTreeMap::new();
-        let mut kernel_anomalies = Vec::new();
-
-        // [NEW] Lazily fetch kernel logs using 3-tier privilege bridge just once
-        let global_log_output = ai::rag::fetch_kernel_logs();
-
-        for (mut drive, mount_opt) in hardware::storage::scan_drives() {
-            // [NEW] Perform identifier-based anomaly filtering locally per drive
-            let mut drive_anomalies =
-                ai::rag::retrieve_kernel_anomalies(&drive, &global_log_output);
-            kernel_anomalies.append(&mut drive_anomalies);
-
-            if args.full_bench {
-                println!(
-                    "🔒 Triggering Privileged Polkit S.M.A.R.T diagnostic on {}...",
-                    drive.name
-                );
-                let (ok, exit, anomaly) = bench::smart::check_health(&drive.name);
-                drive.health_ok = ok;
-                drive.smartctl_exit_code = exit;
-                if let Some(err) = anomaly {
-                    kernel_anomalies.push(err);
-                }
-
-                if let Some(mount) = mount_opt {
-                    if let Some(mb_s) = bench::throughput::run_buffered_bench(&mount) {
-                        benchmarks.insert(
-                            drive.name.clone(),
-                            models::BenchmarkResult { write_mb_s: mb_s },
-                        );
-                    }
-                }
-            }
-
-            storage_drives.push(drive);
+        if args.dump_payload {
+            print_payload_json(&payload);
+        } else {
+            ai::analyzer::run_analysis(&payload).await;
         }
-
-        let total_drives = storage_drives.len();
-        let usb_count = storage_drives
-            .iter()
-            .filter(|d| d.connection.to_lowercase().contains("usb"))
-            .count();
-        let max_depth = storage_drives
-            .iter()
-            .flat_map(|d| d.topology.iter().map(|t| t.level))
-            .max()
-            .unwrap_or(0);
-
-        let summary_header = format!(
-            "System has {} drives, {} are USB. Maximum topology depth detected: {}.",
-            total_drives, usb_count, max_depth
-        );
-
-        let payload = models::TuxPayload {
-            summary_header,
-            system: sys_specs,
-            drives: storage_drives,
-            benchmarks,
-            kernel_anomalies,
-            fstab: hardware::storage::extract_fstab(),
-        };
-
-        ai::analyzer::run_analysis(&payload).await;
     } else {
         println!("TuxTests MVP Scaffolding Initialized. Run with `--analyze` or `--full-bench`.");
+    }
+}
+
+fn build_payload(full_bench: bool) -> models::TuxPayload {
+    let sys_specs = hardware::system::get_system_specs();
+    let mut storage_drives = Vec::new();
+    let mut benchmarks = std::collections::BTreeMap::new();
+    let mut kernel_anomalies = Vec::new();
+
+    let global_log_output = ai::rag::fetch_kernel_logs();
+
+    for (mut drive, mount_opt) in hardware::storage::scan_drives() {
+        let mut drive_anomalies = ai::rag::retrieve_kernel_anomalies(&drive, &global_log_output);
+        kernel_anomalies.append(&mut drive_anomalies);
+
+        if full_bench {
+            eprintln!(
+                "🔒 Triggering Privileged Polkit S.M.A.R.T diagnostic on {}...",
+                drive.name
+            );
+            let (ok, exit, anomaly) = bench::smart::check_health(&drive.name);
+            drive.health_ok = ok;
+            drive.smartctl_exit_code = exit;
+            if let Some(err) = anomaly {
+                kernel_anomalies.push(err);
+            }
+
+            if let Some(mount) = mount_opt {
+                if let Some(mb_s) = bench::throughput::run_buffered_bench(&mount) {
+                    benchmarks.insert(
+                        drive.name.clone(),
+                        models::BenchmarkResult { write_mb_s: mb_s },
+                    );
+                }
+            }
+        }
+
+        storage_drives.push(drive);
+    }
+
+    let total_drives = storage_drives.len();
+    let usb_count = storage_drives
+        .iter()
+        .filter(|d| d.connection.to_lowercase().contains("usb"))
+        .count();
+    let max_depth = storage_drives
+        .iter()
+        .flat_map(|d| d.topology.iter().map(|t| t.level))
+        .max()
+        .unwrap_or(0);
+
+    let summary_header = format!(
+        "System has {} drives, {} are USB. Maximum topology depth detected: {}.",
+        total_drives, usb_count, max_depth
+    );
+
+    models::TuxPayload {
+        summary_header,
+        system: sys_specs,
+        drives: storage_drives,
+        benchmarks,
+        kernel_anomalies,
+        fstab: hardware::storage::extract_fstab(),
+    }
+}
+
+fn print_payload_json(payload: &models::TuxPayload) {
+    match serde_json::to_string_pretty(payload) {
+        Ok(json) => println!("{}", json),
+        Err(err) => eprintln!("❌ Failed to serialize scan payload: {}", err),
     }
 }

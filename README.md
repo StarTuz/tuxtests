@@ -44,6 +44,12 @@ tuxtests --full-bench
 
 # Point at a non-default local or remote Ollama endpoint
 tuxtests --set-ollama-url "http://127.0.0.1:11434"
+
+# Emit machine-readable payload JSON for UI or automation
+tuxtests --dump-payload
+
+# Print normalized runtime config as JSON
+tuxtests --print-config
 ```
 
 ## 🏗 Project Structure
@@ -65,3 +71,4 @@ TuxTests emphasizes reliability through:
 - [CLI.md](CLI.md): Detailed Command Line Interface guide.
 - [GEMINI.md](GEMINI.md): AI Pipeline and JSON Schema definitions (Dynamic v1beta mapping).
 - [SKILLS.md](SKILLS.md): Technical details on `udev` and RAG strategies.
+- [docs/UI_CONTRACT.md](docs/UI_CONTRACT.md): Stable frontend and automation integration contract.

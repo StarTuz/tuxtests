@@ -12,6 +12,8 @@ This document provides a comprehensive guide to the command-line interface of Tu
 - `--full-bench`: Performs a deep, privileged diagnostic scan.
   - **Scope**: Includes everything in `--analyze`, plus S.M.A.R.T. health checks and 1GB buffered write benchmarks.
   - **Privileges**: Requires `pkexec` (Polkit) for drive health monitoring.
+- `--dump-payload`: Emits the collected `TuxPayload` as pretty-printed JSON to `stdout` and skips AI analysis.
+  - **Integration Note**: Progress and diagnostic messages go to `stderr`, so `stdout` remains machine-readable.
 
 ### Configuration
 
@@ -24,6 +26,7 @@ This document provides a comprehensive guide to the command-line interface of Tu
   - **Default**: `http://127.0.0.1:11434`.
 - `--set-ollama-model <MODEL>`: Specifically targets the local model (e.g., `gemma4:e4b`).
   - **Default**: `mistral`.
+- `--print-config`: Emits the normalized runtime configuration as pretty-printed JSON to `stdout`.
 
 ---
 
@@ -66,3 +69,18 @@ If you see this anomaly in your AI report, it means `smartctl` is not installed 
 This means the tool couldn't find a key in your system vault.
 
 - **Fix**: Run `tuxtests --set-gemini-key "YOUR_KEY_HERE"` once to initialize the secure storage.
+
+---
+
+## 🔌 UI Contract
+
+For frontend or automation integration, prefer these stable interfaces:
+
+- `tuxtests --print-config`
+  - Returns normalized config JSON on `stdout`.
+- `tuxtests --dump-payload`
+  - Returns the hardware scan payload JSON on `stdout`.
+- `tuxtests --full-bench --dump-payload`
+  - Returns the enriched payload including SMART and throughput fields on `stdout`.
+
+Human-oriented status updates and troubleshooting messages are written to `stderr` so `stdout` can be consumed as structured data.

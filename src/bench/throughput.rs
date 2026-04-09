@@ -101,13 +101,13 @@ fn parse_df_output(stdout: &str) -> Option<CapacitySnapshot> {
 pub fn run_buffered_bench(mount_point: &str) -> Option<u32> {
     match capacity_check_message(mount_point) {
         Ok(message) => {
-            println!(
+            eprintln!(
                 "📊 Throughput safety check passed on {} -> {}.",
                 mount_point, message
             );
         }
         Err(reason) => {
-            println!(
+            eprintln!(
                 "⚠️ Skipping throughput diagnostics on {} -> {}.",
                 mount_point, reason
             );
@@ -121,7 +121,7 @@ pub fn run_buffered_bench(mount_point: &str) -> Option<u32> {
     // Ensure write safely natively over user permission bounds without triggering Polkit again natively.
     let file_result = File::create(path);
     if file_result.is_err() {
-        println!(
+        eprintln!(
             "⚠️ Skipping throughput diagnostics on {} -> unable to create temporary benchmark file.",
             mount_point
         );
@@ -134,7 +134,7 @@ pub fn run_buffered_bench(mount_point: &str) -> Option<u32> {
 
     for _ in 0..BENCH_SIZE_MB {
         if file.write_all(&buffer).is_err() {
-            println!(
+            eprintln!(
                 "⚠️ Throughput benchmark on {} ended early because the write stream failed.",
                 mount_point
             );

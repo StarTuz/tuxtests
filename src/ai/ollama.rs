@@ -10,7 +10,7 @@ pub async fn invoke_ollama(
     system_prompt: &str,
     payload_json: &str,
 ) -> Option<String> {
-    println!(
+    eprintln!(
         "🔌 Dispatching payload natively to local Ollama Engine [{}] via {}...",
         model, base_url
     );
