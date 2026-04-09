@@ -136,6 +136,14 @@ pub fn normalize_ollama_url(input: &str) -> Result<String, String> {
     Ok(parsed.to_string().trim_end_matches('/').to_string())
 }
 
+pub fn config_to_toml(config: &AppConfig) -> Result<String, toml::ser::Error> {
+    toml::to_string(config)
+}
+
+pub fn config_from_toml(content: &str) -> Result<AppConfig, toml::de::Error> {
+    toml::from_str::<AppConfig>(content).map(AppConfig::normalized)
+}
+
 fn default_provider() -> String {
     "gemini".to_string()
 }
@@ -151,8 +159,8 @@ fn default_ollama_url() -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        default_ollama_model, default_ollama_url, normalize_ollama_model, normalize_ollama_url,
-        normalize_provider, AppConfig,
+        config_from_toml, config_to_toml, default_ollama_model, default_ollama_url,
+        normalize_ollama_model, normalize_ollama_url, normalize_provider, AppConfig,
     };
 
     #[test]
@@ -196,5 +204,36 @@ mod tests {
         assert_eq!(config.provider, "gemini");
         assert_eq!(config.ollama_model, default_ollama_model());
         assert_eq!(config.ollama_url, default_ollama_url());
+    }
+
+    #[test]
+    fn round_trips_config_through_toml() {
+        let config = AppConfig {
+            provider: "ollama".to_string(),
+            ollama_model: "gemma3".to_string(),
+            ollama_url: "http://localhost:11434".to_string(),
+        };
+
+        let toml = config_to_toml(&config).unwrap();
+        let restored = config_from_toml(&toml).unwrap();
+
+        assert_eq!(restored.provider, "ollama");
+        assert_eq!(restored.ollama_model, "gemma3");
+        assert_eq!(restored.ollama_url, "http://localhost:11434");
+    }
+
+    #[test]
+    fn restores_defaults_when_legacy_toml_is_missing_new_fields() {
+        let restored = config_from_toml(
+            r#"
+provider = "gemini"
+ollama_model = "mistral"
+"#,
+        )
+        .unwrap();
+
+        assert_eq!(restored.provider, "gemini");
+        assert_eq!(restored.ollama_model, "mistral");
+        assert_eq!(restored.ollama_url, default_ollama_url());
     }
 }
