@@ -15,6 +15,8 @@ pub struct TuxPayload {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SystemInfo {
+    pub os_release: String,
+    pub kernel_version: String,
     pub cpu: String,
     pub ram_gb: u64,
 }
