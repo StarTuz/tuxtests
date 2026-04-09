@@ -5,7 +5,7 @@ use std::process::Command;
 pub fn check_health(device_node: &str) -> (bool, Option<i32>, Option<String>) {
     let dev_path = format!("/dev/{}", device_node);
     let output = Command::new("pkexec")
-        .args(&["smartctl", "-H", &dev_path])
+        .args(["smartctl", "-H", &dev_path])
         .output();
         
     match output {

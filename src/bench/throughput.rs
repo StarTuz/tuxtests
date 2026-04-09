@@ -8,7 +8,7 @@ use std::process::Command;
 /// Fails closed if space is aggressively limited.
 pub fn ensure_capacity_safety(mount_point: &str) -> bool {
     let output = Command::new("df")
-        .args(&["-m", mount_point]) // megabytes natively
+        .args(["-m", mount_point]) // megabytes natively
         .output()
         .ok();
         
@@ -39,7 +39,7 @@ pub fn run_buffered_bench(mount_point: &str) -> Option<u32> {
     let path = Path::new(&bench_file);
     
     // Ensure write safely natively over user permission bounds without triggering Polkit again natively!
-    let file_result = File::create(&path);
+    let file_result = File::create(path);
     if file_result.is_err() {
         // Silently skip if writing to a restricted host partition
         return None; 

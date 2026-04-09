@@ -28,7 +28,7 @@ pub struct LsblkDevice {
 /// Returns a tuple of strongly-typed DriveInfo AND its active mount route.
 pub fn scan_drives() -> Vec<(DriveInfo, Option<String>)> {
     let output_result = Command::new("lsblk")
-        .args(&["-J", "-b", "-o", "NAME,TYPE,SIZE,PKNAME,MOUNTPOINTS,TRAN"])
+        .args(["-J", "-b", "-o", "NAME,TYPE,SIZE,PKNAME,MOUNTPOINTS,TRAN"])
         .output();
 
     let output = match output_result {
