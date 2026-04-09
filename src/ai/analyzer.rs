@@ -20,7 +20,8 @@ pub async fn run_analysis(payload: &TuxPayload) {
     } else if config.provider == "ollama" {
         ollama::invoke_ollama(
             &config.ollama_model,
-            &format!("{}\n\n{}", SYSTEM_PROMPT, payload_str),
+            SYSTEM_PROMPT,
+            &payload_str,
         )
         .await
     } else {

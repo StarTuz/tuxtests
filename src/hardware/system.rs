@@ -17,12 +17,11 @@ pub fn get_system_specs() -> SystemInfo {
         .unwrap_or("Unknown CPU")
         .to_string();
 
-    let mut os_release = "Unknown Linux".to_string();
+    let mut os_release = std::collections::BTreeMap::new();
     if let Ok(content) = fs::read_to_string("/etc/os-release") {
         for line in content.lines() {
-            if line.starts_with("PRETTY_NAME=") {
-                os_release = line.replace("PRETTY_NAME=", "").replace("\"", "");
-                break;
+            if let Some((k, v)) = line.split_once('=') {
+                os_release.insert(k.to_string(), v.replace("\"", "").to_string());
             }
         }
     }

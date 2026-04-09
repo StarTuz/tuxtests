@@ -91,7 +91,11 @@ async fn main() {
         let payload = models::TuxPayload {
             summary_header: "System has 1 drives, 0 are USB. Maximum topology depth detected: 3.".to_string(),
             system: models::SystemInfo {
-                os_release: "Mock GNU/Linux".to_string(),
+                os_release: {
+                    let mut map = std::collections::BTreeMap::new();
+                    map.insert("PRETTY_NAME".to_string(), "Mock GNU/Linux".to_string());
+                    map
+                },
                 kernel_version: "6.x-mock".to_string(),
                 cpu: "Mock Sandbox CPU (Threadripper Stub)".to_string(),
                 ram_gb: 128,
