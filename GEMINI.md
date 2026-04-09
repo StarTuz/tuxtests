@@ -20,7 +20,12 @@ Hardware scan data (from `sysinfo`, `udev`, `lsblk`, `smartctl`) and retrieved l
       "usage_percent": 92,
       "health_ok": true,
       "connection": "PCIe 4.0 x4",
-      "physical_path": "/devices/pci0000:00/0000:00:02.4/0000:03:00.0/nvme/nvme0/nvme0n1"
+      "physical_path": "/devices/pci0000:00/0000:00:02.4/0000:03:00.0/nvme/nvme0/nvme0n1",
+      "topology": [
+        { "level": 1, "subsystem": "pci", "sysname": "0000:00:02.4" },
+        { "level": 2, "subsystem": "nvme", "sysname": "nvme0" },
+        { "level": 3, "subsystem": "block", "sysname": "nvme0n1" }
+      ]
     },
     {
       "name": "sda",
@@ -29,7 +34,14 @@ Hardware scan data (from `sysinfo`, `udev`, `lsblk`, `smartctl`) and retrieved l
       "usage_percent": 15,
       "health_ok": true,
       "connection": "USB 2.0 (High-Speed)",
-      "physical_path": "/devices/pci0000:00/0000:00:14.0/usb2/2-1"
+      "physical_path": "/devices/pci0000:00/0000:00:14.0/usb2/2-1",
+      "topology": [
+        { "level": 1, "subsystem": "pci", "sysname": "0000:00:14.0" },
+        { "level": 2, "subsystem": "usb", "sysname": "usb2" },
+        { "level": 3, "subsystem": "usb", "sysname": "2-1" },
+        { "level": 4, "subsystem": "scsi", "sysname": "host6" },
+        { "level": 5, "subsystem": "block", "sysname": "sda" }
+      ]
     }
   ],
   "benchmarks": {

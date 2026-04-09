@@ -77,7 +77,13 @@ pub fn scan_drives() -> Vec<(DriveInfo, Option<String>)> {
         };
 
         // Let udev explicitly quantify the math natively, otherwise fall back to pure `lsblk` connection type!
-        let connection = connection::get_connection_speed(&dev.name).unwrap_or(safe_fallback);
+        let (udev_conn, syspath, topology) = connection::get_device_topology(&dev.name);
+        let connection = udev_conn.unwrap_or(safe_fallback);
+        let physical_path = if !syspath.is_empty() {
+            syspath
+        } else {
+            "Unmapped in Phase 4".to_string()
+        };
 
         // Map the first structurally sound mount logic natively if it exists.
         let mount_target = dev
@@ -95,7 +101,8 @@ pub fn scan_drives() -> Vec<(DriveInfo, Option<String>)> {
 
             usage_percent: 0,
             health_ok: true,
-            physical_path: "Unmapped in Phase 4".to_string(),
+            physical_path,
+            topology,
             serial: None,
             smartctl_exit_code: None,
             parent: dev.pkname,

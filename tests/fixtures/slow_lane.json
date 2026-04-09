@@ -6,5 +6,10 @@
   "usage_percent": 50,
   "health_ok": true,
   "physical_path": "/devices/pci0000:00/0000:00:14.0/usb2/2-1",
-  "serial": "EXT_NVME_001"
+  "serial": "EXT_NVME_001",
+  "topology": [
+    { "level": 1, "subsystem": "pci", "sysname": "0000:00:14.0" },
+    { "level": 2, "subsystem": "usb", "sysname": "usb2" },
+    { "level": 3, "subsystem": "usb", "sysname": "2-1" }
+  ]
 }

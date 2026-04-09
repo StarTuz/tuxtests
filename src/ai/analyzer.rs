@@ -10,6 +10,7 @@ pub async fn run_analysis(payload: &TuxPayload) {
     let payload_str = serde_json::to_string_pretty(payload)
         .expect("Critically failed to mathematically stringify TuxPayload models");
 
+
     let output = if config.provider == "gemini" {
         if let Some(key) = config::AppConfig::get_gemini_key() {
             gemini::invoke_gemini(&key, SYSTEM_PROMPT, &payload_str).await

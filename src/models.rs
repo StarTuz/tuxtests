@@ -28,11 +28,21 @@ pub struct DriveInfo {
     pub health_ok: bool,
     pub physical_path: String,
 
+    /// New granular lineages for UI tree visualization
+    pub topology: Vec<TopologyNode>,
+
     // Optional properties depending on disk topology topology edge cases
     pub serial: Option<String>,
     pub smartctl_exit_code: Option<i32>,
     pub parent: Option<String>,
     pub is_luks: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct TopologyNode {
+    pub level: usize,
+    pub subsystem: String,
+    pub sysname: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
