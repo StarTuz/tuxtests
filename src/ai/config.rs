@@ -1,12 +1,17 @@
 use keyring::Entry;
+use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct AppConfig {
+    #[serde(default = "default_provider")]
     pub provider: String,
+    #[serde(default = "default_ollama_model")]
     pub ollama_model: String,
+    #[serde(default = "default_ollama_url")]
+    pub ollama_url: String,
 }
 
 impl AppConfig {
@@ -30,23 +35,25 @@ impl AppConfig {
 
     pub fn load() -> Self {
         let mut default = Self {
-            provider: "gemini".to_string(),
-            ollama_model: "mistral".to_string(), // Strong offline default for deep reasoning capabilities
+            provider: default_provider(),
+            ollama_model: default_ollama_model(), // Strong offline default for deep reasoning capabilities
+            ollama_url: default_ollama_url(),
         };
 
         if let Some(path) = Self::config_path() {
             if let Ok(content) = fs::read_to_string(&path) {
-                if let Ok(config) = toml::from_str(&content) {
-                    return config;
+                if let Ok(config) = toml::from_str::<Self>(&content) {
+                    return config.normalized();
                 }
             } else {
                 default.save(); // Automatically bootstrap the filesystem boundary natively!
             }
         }
-        default
+        default.normalized()
     }
 
     pub fn save(&mut self) -> bool {
+        *self = self.clone().normalized();
         if let Some(path) = Self::config_path() {
             match toml::to_string(self) {
                 Ok(content) => {
@@ -69,5 +76,125 @@ impl AppConfig {
     pub fn get_gemini_key() -> Option<String> {
         let entry = Entry::new("tuxtests", "gemini_api").ok()?;
         entry.get_password().ok()
+    }
+
+    pub fn normalized(mut self) -> Self {
+        self.provider = normalize_provider(&self.provider).unwrap_or_else(|_| default_provider());
+        self.ollama_model =
+            normalize_ollama_model(&self.ollama_model).unwrap_or_else(|_| default_ollama_model());
+        self.ollama_url =
+            normalize_ollama_url(&self.ollama_url).unwrap_or_else(|_| default_ollama_url());
+        self
+    }
+}
+
+pub fn normalize_provider(input: &str) -> Result<String, String> {
+    let provider = input.trim().to_lowercase();
+    match provider.as_str() {
+        "gemini" | "ollama" => Ok(provider),
+        _ => Err(format!(
+            "unsupported provider '{}'; expected 'gemini' or 'ollama'",
+            input.trim()
+        )),
+    }
+}
+
+pub fn normalize_ollama_model(input: &str) -> Result<String, String> {
+    let model = input.trim();
+    if model.is_empty() {
+        Err("ollama model cannot be empty".to_string())
+    } else {
+        Ok(model.to_string())
+    }
+}
+
+pub fn normalize_ollama_url(input: &str) -> Result<String, String> {
+    let trimmed = input.trim();
+    let mut parsed =
+        Url::parse(trimmed).map_err(|e| format!("invalid Ollama URL '{}': {}", trimmed, e))?;
+
+    match parsed.scheme() {
+        "http" | "https" => {}
+        scheme => {
+            return Err(format!(
+                "invalid Ollama URL '{}': unsupported scheme '{}'",
+                trimmed, scheme
+            ));
+        }
+    }
+
+    if parsed.host_str().is_none() {
+        return Err(format!("invalid Ollama URL '{}': missing host", trimmed));
+    }
+
+    parsed.set_query(None);
+    parsed.set_fragment(None);
+    if parsed.path() != "/" {
+        parsed.set_path("");
+    }
+
+    Ok(parsed.to_string().trim_end_matches('/').to_string())
+}
+
+fn default_provider() -> String {
+    "gemini".to_string()
+}
+
+fn default_ollama_model() -> String {
+    "mistral".to_string()
+}
+
+fn default_ollama_url() -> String {
+    "http://127.0.0.1:11434".to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        default_ollama_model, default_ollama_url, normalize_ollama_model, normalize_ollama_url,
+        normalize_provider, AppConfig,
+    };
+
+    #[test]
+    fn normalizes_provider_values() {
+        assert_eq!(normalize_provider(" Gemini ").unwrap(), "gemini");
+        assert_eq!(normalize_provider("OLLAMA").unwrap(), "ollama");
+        assert!(normalize_provider("openai").is_err());
+    }
+
+    #[test]
+    fn normalizes_ollama_model_values() {
+        assert_eq!(
+            normalize_ollama_model(" gemma3:latest ").unwrap(),
+            "gemma3:latest"
+        );
+        assert!(normalize_ollama_model("   ").is_err());
+    }
+
+    #[test]
+    fn normalizes_ollama_url_values() {
+        assert_eq!(
+            normalize_ollama_url("http://localhost:11434/").unwrap(),
+            "http://localhost:11434"
+        );
+        assert_eq!(
+            normalize_ollama_url("https://example.com:443/api?x=1#frag").unwrap(),
+            "https://example.com"
+        );
+        assert!(normalize_ollama_url("localhost:11434").is_err());
+    }
+
+    #[test]
+    fn normalizes_legacy_config_values() {
+        let config = AppConfig {
+            provider: "BAD".to_string(),
+            ollama_model: " ".to_string(),
+            ollama_url: "".to_string(),
+        }
+        .normalized();
+
+        assert_eq!(config.provider, "gemini");
+        assert_eq!(config.ollama_model, default_ollama_model());
+        assert_eq!(config.ollama_url, default_ollama_url());
     }
 }

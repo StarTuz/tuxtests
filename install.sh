@@ -1,9 +1,9 @@
 #!/bin/bash
-# TuxTests v0.7.0 Installer Script
+# TuxTests v0.8.0 Installer Script
 
 set -e
 
-echo "🚀 Initializing TuxTests v0.7.0 Build Pipeline..."
+echo "🚀 Initializing TuxTests v0.8.0 Build Pipeline..."
 
 # Verify cargo dependency
 if ! command -v cargo &> /dev/null; then
@@ -24,7 +24,7 @@ echo "⚡ Deploying executable natively..."
 cp target/release/tuxtests "$INSTALL_DIR/tuxtests"
 chmod +x "$INSTALL_DIR/tuxtests"
 
-echo "✅ TuxTests v0.7.0 Successfully Deployed!"
+echo "✅ TuxTests v0.8.0 Successfully Deployed!"
 echo ""
 echo "Note: Ensure that '$INSTALL_DIR' evaluates inside your active \$PATH!"
 echo ""
@@ -32,7 +32,7 @@ echo "To initialize the Secure Gemini Pipeline, run:"
 echo "  tuxtests --set-gemini-key \"YOUR_API_KEY_HERE\""
 echo ""
 echo "Or, configure for fully offline Local Privacy execution via Ollama:"
-echo "  tuxtests --set-llm-provider ollama --set-ollama-model mistral"
+echo "  tuxtests --set-llm-provider ollama --set-ollama-url http://127.0.0.1:11434 --set-ollama-model mistral"
 echo ""
 echo "To launch your first native analysis, type:"
 echo "  tuxtests --analyze"

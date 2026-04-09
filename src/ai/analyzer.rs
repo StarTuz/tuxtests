@@ -18,7 +18,13 @@ pub async fn run_analysis(payload: &TuxPayload) {
             return;
         }
     } else if config.provider == "ollama" {
-        ollama::invoke_ollama(&config.ollama_model, SYSTEM_PROMPT, &payload_str).await
+        ollama::invoke_ollama(
+            &config.ollama_url,
+            &config.ollama_model,
+            SYSTEM_PROMPT,
+            &payload_str,
+        )
+        .await
     } else {
         eprintln!(
             "❌ Erroneous Provider configuration natively trapped. Switch provider logic via CLI."

@@ -39,18 +39,46 @@ async fn main() {
     let args = Args::parse();
 
     // AI Persistence Configuration Setup
-    if args.set_llm_provider.is_some() || args.set_ollama_model.is_some() {
+    if args.set_llm_provider.is_some()
+        || args.set_ollama_model.is_some()
+        || args.set_ollama_url.is_some()
+    {
         let mut config = ai::config::AppConfig::load();
         if let Some(prov) = args.set_llm_provider {
-            config.provider = prov;
+            match ai::config::normalize_provider(&prov) {
+                Ok(provider) => config.provider = provider,
+                Err(err) => {
+                    eprintln!("❌ Invalid `--set-llm-provider` value: {}", err);
+                    return;
+                }
+            }
         }
         if let Some(model) = args.set_ollama_model {
-            config.ollama_model = model;
+            match ai::config::normalize_ollama_model(&model) {
+                Ok(model) => config.ollama_model = model,
+                Err(err) => {
+                    eprintln!("❌ Invalid `--set-ollama-model` value: {}", err);
+                    return;
+                }
+            }
         }
-        config.save();
-        println!(
-            "⚙️ TuxTests AI Configuration natively flushed into ~/.config/tuxtests/config.toml!"
-        );
+        if let Some(url) = args.set_ollama_url {
+            match ai::config::normalize_ollama_url(&url) {
+                Ok(url) => config.ollama_url = url,
+                Err(err) => {
+                    eprintln!("❌ Invalid `--set-ollama-url` value: {}", err);
+                    return;
+                }
+            }
+        }
+        if config.save() {
+            println!(
+                "⚙️ TuxTests AI Configuration updated: provider={}, ollama_model={}, ollama_url={}",
+                config.provider, config.ollama_model, config.ollama_url
+            );
+        } else {
+            eprintln!("❌ Failed to persist TuxTests AI configuration.");
+        }
         return;
     }
 

@@ -4,7 +4,7 @@ TuxTests is a high-performance, memory-safe Linux hardware diagnostic and sugges
 
 ## 🚀 Features
 
-- **Core Hardware Investigation**: CPU, RAM, and Motherboard identification using `sysinfo`.
+- **Core Hardware Investigation**: CPU, RAM, kernel, OS release, and block device identification using `sysinfo`, `lsblk`, and `/etc/os-release`.
 - **Connection Intelligence**: [ACTIVE] Deep `udev` tree traversal to identify physical port bottlenecks (e.g., fast SSDs on legacy USB 2.0 ports).
 - **S.M.A.R.T. Integration**: [ACTIVE] Drive health monitoring via `smartctl` with Polkit elevation.
 - **Non-Destructive Benchmarking**: [ACTIVE] Buffered read/write testing with 5GB safety checks.
@@ -16,9 +16,9 @@ TuxTests is a high-performance, memory-safe Linux hardware diagnostic and sugges
 - **Language**: Rust
 - **CLI**: `clap`
 - **Async Runtime**: `tokio`
-- **Hardware APIs**: `libudev`, `sysinfo`, `procfs`
+- **Hardware APIs**: `libudev`, `sysinfo`, `lsblk`
 - **Serialization**: `serde`, `serde_json`
-- **Configuration**: `--set-ollama-model <MODEL>`: Specifically target the physical offline model executing natively (e.g., `mistral`, `gemma`).
+- **Configuration**: `--set-ollama-model <MODEL>` and `--set-ollama-url <URL>` for local Ollama targeting.
 - **Storage**: Persistent configuration in `~/.config/tuxtests/config.toml` with local safety fallbacks for read-only environments.
 
 ---
@@ -41,6 +41,9 @@ tuxtests --analyze
 
 # Run a privileged scan including SMART health and benchmarks
 tuxtests --full-bench
+
+# Point at a non-default local or remote Ollama endpoint
+tuxtests --set-ollama-url "http://127.0.0.1:11434"
 ```
 
 ## 🏗 Project Structure

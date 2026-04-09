@@ -4,13 +4,27 @@ use ollama_rs::Ollama;
 
 /// Fires an isolated, strictly-offline completion payload dynamically resolving against localhost endpoints natively.
 /// Returns identical Option<String> structural payload like Gemini API driver.
-pub async fn invoke_ollama(model: &str, system_prompt: &str, payload_json: &str) -> Option<String> {
+pub async fn invoke_ollama(
+    base_url: &str,
+    model: &str,
+    system_prompt: &str,
+    payload_json: &str,
+) -> Option<String> {
     println!(
-        "🔌 Dispatching payload natively to local Ollama Engine [{}]...",
-        model
+        "🔌 Dispatching payload natively to local Ollama Engine [{}] via {}...",
+        model, base_url
     );
 
-    let ollama = Ollama::default();
+    let ollama = match Ollama::try_new(base_url) {
+        Ok(client) => client,
+        Err(e) => {
+            eprintln!(
+                "❌ CRITICAL ERROR: Ollama URL '{}' is invalid: {}.",
+                base_url, e
+            );
+            return None;
+        }
+    };
 
     // Explicitly merge instructions and payload as a single user prompt! Model instruct templates (especially Gemma) often fail dynamically handling separate .system() flags due to lacking a native 'system' role.
     let merged_prompt = format!(

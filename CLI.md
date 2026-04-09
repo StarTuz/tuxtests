@@ -20,7 +20,8 @@ This document provides a comprehensive guide to the command-line interface of Tu
 - `--set-gemini-key <KEY>`: Securely stores your Google AI API key.
   - **Storage**: System Keyring (KWallet, GNOME Keyring, or Secret Service).
 - `--set-ollama-url <URL>`: Configures the endpoint for local Ollama instances.
-  - **Default**: `http://localhost:11434`.
+  - **Validation**: Must be a full `http://` or `https://` base URL.
+  - **Default**: `http://127.0.0.1:11434`.
 - `--set-ollama-model <MODEL>`: Specifically targets the local model (e.g., `gemma4:e4b`).
   - **Default**: `mistral`.
 
@@ -47,7 +48,7 @@ Privileged actions like reading S.M.A.R.T. data (`smartctl`) are handled via `pk
 
 The `--full-bench` command includes a synthetic write test to measure drive throughput.
 
-- **Capacity Guard**: TuxTests will **never** perform a benchmark on a partition with less than 5GB or 10% free space.
+- **Capacity Guard**: TuxTests will **never** perform a benchmark on a partition with 5GB or less free space.
 - **Cleanup**: Benchmark files (`.tuxtests_bench.tmp`) are volatile and deleted immediately after the test completes.
 
 ---
