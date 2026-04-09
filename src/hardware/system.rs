@@ -1,6 +1,6 @@
 use crate::models::SystemInfo;
-use sysinfo::System;
 use std::fs;
+use sysinfo::System;
 
 /// Extracts static hardware topologies from the host (CPU Type and aggregate RAM).
 pub fn get_system_specs() -> SystemInfo {

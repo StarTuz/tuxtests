@@ -89,7 +89,8 @@ async fn main() {
             .expect("Mock fixture physically deviated from the strict DriveInfo map!");
 
         let payload = models::TuxPayload {
-            summary_header: "System has 1 drives, 0 are USB. Maximum topology depth detected: 3.".to_string(),
+            summary_header: "System has 1 drives, 0 are USB. Maximum topology depth detected: 3."
+                .to_string(),
             system: models::SystemInfo {
                 os_release: {
                     let mut map = std::collections::BTreeMap::new();
@@ -157,7 +158,10 @@ async fn main() {
         }
 
         let total_drives = storage_drives.len();
-        let usb_count = storage_drives.iter().filter(|d| d.connection.to_lowercase().contains("usb")).count();
+        let usb_count = storage_drives
+            .iter()
+            .filter(|d| d.connection.to_lowercase().contains("usb"))
+            .count();
         let max_depth = storage_drives
             .iter()
             .flat_map(|d| d.topology.iter().map(|t| t.level))

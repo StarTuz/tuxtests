@@ -1,4 +1,5 @@
 use ollama_rs::generation::completion::request::GenerationRequest;
+use ollama_rs::generation::options::GenerationOptions;
 use ollama_rs::Ollama;
 
 /// Fires an isolated, strictly-offline completion payload dynamically resolving against localhost endpoints natively.
@@ -11,10 +12,11 @@ pub async fn invoke_ollama(model: &str, system_prompt: &str, payload_json: &str)
 
     let ollama = Ollama::default();
 
-    use ollama_rs::generation::options::GenerationOptions;
-
     // Explicitly merge instructions and payload as a single user prompt! Model instruct templates (especially Gemma) often fail dynamically handling separate .system() flags due to lacking a native 'system' role.
-    let merged_prompt = format!("{}\n\n### HARDWARE PAYLOAD (JSON) ###\n{}", system_prompt, payload_json);
+    let merged_prompt = format!(
+        "{}\n\n### HARDWARE PAYLOAD (JSON) ###\n{}",
+        system_prompt, payload_json
+    );
 
     let req = GenerationRequest::new(model.to_string(), merged_prompt)
         .options(GenerationOptions::default().num_ctx(16384));
