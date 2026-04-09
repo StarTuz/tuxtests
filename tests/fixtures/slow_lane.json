@@ -6,6 +6,10 @@
   "usage_percent": 50,
   "health_ok": true,
   "physical_path": "/devices/pci0000:00/0000:00:14.0/usb2/2-1",
+  "fstype": "ext4",
+  "uuid": "mock-uuid-1234",
+  "label": "SlowDrive",
+  "active_mountpoints": ["/mnt/slow"],
   "serial": "EXT_NVME_001",
   "topology": [
     { "level": 1, "subsystem": "pci", "sysname": "0000:00:14.0" },

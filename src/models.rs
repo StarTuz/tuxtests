@@ -9,6 +9,7 @@ pub struct TuxPayload {
     /// BTreeMap ensures benchmark ordering natively resolves identically for the LLM
     pub benchmarks: BTreeMap<String, BenchmarkResult>,
     pub kernel_anomalies: Vec<String>,
+    pub fstab: Vec<FstabEntry>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -27,6 +28,11 @@ pub struct DriveInfo {
     pub usage_percent: u8,
     pub health_ok: bool,
     pub physical_path: String,
+
+    pub fstype: Option<String>,
+    pub uuid: Option<String>,
+    pub label: Option<String>,
+    pub active_mountpoints: Vec<String>,
 
     /// New granular lineages for UI tree visualization
     pub topology: Vec<TopologyNode>,
@@ -48,4 +54,14 @@ pub struct TopologyNode {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct BenchmarkResult {
     pub write_mb_s: u32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct FstabEntry {
+    pub file_system: String,
+    pub mount_point: String,
+    pub type_: String,
+    pub options: String,
+    pub dump: String,
+    pub pass: String,
 }

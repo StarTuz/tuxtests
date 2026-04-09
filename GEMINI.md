@@ -21,6 +21,10 @@ Hardware scan data (from `sysinfo`, `udev`, `lsblk`, `smartctl`) and retrieved l
       "health_ok": true,
       "connection": "PCIe 4.0 x4",
       "physical_path": "/devices/pci0000:00/0000:00:02.4/0000:03:00.0/nvme/nvme0/nvme0n1",
+      "fstype": "ext4",
+      "uuid": "4f9d...",
+      "label": "root_fs",
+      "active_mountpoints": ["/"],
       "topology": [
         { "level": 1, "subsystem": "pci", "sysname": "0000:00:02.4" },
         { "level": 2, "subsystem": "nvme", "sysname": "nvme0" },
@@ -35,6 +39,10 @@ Hardware scan data (from `sysinfo`, `udev`, `lsblk`, `smartctl`) and retrieved l
       "health_ok": true,
       "connection": "USB 2.0 (High-Speed)",
       "physical_path": "/devices/pci0000:00/0000:00:14.0/usb2/2-1",
+      "fstype": "ntfs",
+      "uuid": "A8C3...",
+      "label": "Backup",
+      "active_mountpoints": ["/mnt/backup"],
       "topology": [
         { "level": 1, "subsystem": "pci", "sysname": "0000:00:14.0" },
         { "level": 2, "subsystem": "usb", "sysname": "usb2" },
@@ -51,6 +59,16 @@ Hardware scan data (from `sysinfo`, `udev`, `lsblk`, `smartctl`) and retrieved l
   "kernel_anomalies": [
     "usb 2-1: reset high-speed USB device number 3",
     "blk_update_request: I/O error, dev sdb, sector 1234"
+  ],
+  "fstab": [
+    {
+      "file_system": "UUID=4f9d...",
+      "mount_point": "/",
+      "type_": "ext4",
+      "options": "defaults",
+      "dump": "0",
+      "pass": "1"
+    }
   ]
 }
 ```

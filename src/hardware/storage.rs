@@ -21,6 +21,10 @@ pub struct LsblkDevice {
 
     // Natively fetch physical transport type from `lsblk`
     pub tran: Option<String>,
+
+    pub fstype: Option<String>,
+    pub uuid: Option<String>,
+    pub label: Option<String>,
 }
 
 /// Executes an unprivileged subprocess polling the kernel block topology.
@@ -28,7 +32,12 @@ pub struct LsblkDevice {
 /// Returns a tuple of strongly-typed DriveInfo AND its active mount route.
 pub fn scan_drives() -> Vec<(DriveInfo, Option<String>)> {
     let output_result = Command::new("lsblk")
-        .args(["-J", "-b", "-o", "NAME,TYPE,SIZE,PKNAME,MOUNTPOINTS,TRAN"])
+        .args([
+            "-J",
+            "-b",
+            "-o",
+            "NAME,TYPE,SIZE,PKNAME,MOUNTPOINTS,TRAN,FSTYPE,UUID,LABEL",
+        ])
         .output();
 
     let output = match output_result {
@@ -85,13 +94,15 @@ pub fn scan_drives() -> Vec<(DriveInfo, Option<String>)> {
             "Unmapped in Phase 4".to_string()
         };
 
-        // Map the first structurally sound mount logic natively if it exists.
-        let mount_target = dev
+        // Map the structured mount points safely.
+        let mountpoints_vec: Vec<String> = dev
             .mountpoints
             .unwrap_or_default()
             .into_iter()
             .flatten()
-            .next();
+            .collect();
+        
+        let mount_target = mountpoints_vec.first().cloned();
 
         let mapped_drive = DriveInfo {
             name: dev.name,
@@ -102,6 +113,12 @@ pub fn scan_drives() -> Vec<(DriveInfo, Option<String>)> {
             usage_percent: 0,
             health_ok: true,
             physical_path,
+            
+            fstype: dev.fstype,
+            uuid: dev.uuid,
+            label: dev.label,
+            active_mountpoints: mountpoints_vec,
+
             topology,
             serial: None,
             smartctl_exit_code: None,
@@ -113,4 +130,29 @@ pub fn scan_drives() -> Vec<(DriveInfo, Option<String>)> {
     }
 
     drives
+}
+
+/// Parses the local /etc/fstab safely into strong typing
+pub fn extract_fstab() -> Vec<crate::models::FstabEntry> {
+    let mut entries = Vec::new();
+    if let Ok(content) = std::fs::read_to_string("/etc/fstab") {
+        for line in content.lines() {
+            let line = line.trim();
+            if line.starts_with('#') || line.is_empty() {
+                continue;
+            }
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() >= 4 {
+                entries.push(crate::models::FstabEntry {
+                    file_system: parts[0].to_string(),
+                    mount_point: parts[1].to_string(),
+                    type_: parts[2].to_string(),
+                    options: parts[3].to_string(),
+                    dump: parts.get(4).unwrap_or(&"0").to_string(),
+                    pass: parts.get(5).unwrap_or(&"0").to_string(),
+                });
+            }
+        }
+    }
+    entries
 }

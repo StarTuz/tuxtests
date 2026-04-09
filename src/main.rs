@@ -98,6 +98,8 @@ async fn main() {
             kernel_anomalies: vec![
                 "mock anomaly: High predictive failure counts on dummy payload".to_string(),
             ],
+            // Supply empty fstab to isolated mock testing.
+            fstab: Vec::new(),
         };
 
         // Fire safely to models directly without Polkit
@@ -144,6 +146,7 @@ async fn main() {
             drives: storage_drives,
             benchmarks,
             kernel_anomalies,
+            fstab: hardware::storage::extract_fstab(),
         };
 
         ai::analyzer::run_analysis(&payload).await;
