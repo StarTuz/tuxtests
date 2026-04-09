@@ -8,12 +8,18 @@
 pub fn retrieve_kernel_anomalies(device_node: &str, serial: &str) -> Vec<String> {
     // In actual implementation, invoke `dmesg` or read `/var/log/syslog` natively
     let mut anomalies = Vec::new();
-    
+
     // Simulated dummy logs hitting identical logic
     let simulated_dmesg = vec![
         format!("usb 2-1: reset high-speed USB device number 3"),
-        format!("blk_update_request: I/O error, dev {}, sector 1234", device_node),
-        format!("nvme nvme0: controller is down; will reset: serial {}", serial)
+        format!(
+            "blk_update_request: I/O error, dev {}, sector 1234",
+            device_node
+        ),
+        format!(
+            "nvme nvme0: controller is down; will reset: serial {}",
+            serial
+        ),
     ];
 
     for line in simulated_dmesg {
@@ -21,6 +27,6 @@ pub fn retrieve_kernel_anomalies(device_node: &str, serial: &str) -> Vec<String>
             anomalies.push(line);
         }
     }
-    
+
     anomalies
 }

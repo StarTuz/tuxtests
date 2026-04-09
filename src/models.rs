@@ -1,11 +1,11 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TuxPayload {
     pub system: SystemInfo,
     pub drives: Vec<DriveInfo>,
-    
+
     /// BTreeMap ensures benchmark ordering natively resolves identically for the LLM
     pub benchmarks: BTreeMap<String, BenchmarkResult>,
     pub kernel_anomalies: Vec<String>,
@@ -27,7 +27,7 @@ pub struct DriveInfo {
     pub usage_percent: u8,
     pub health_ok: bool,
     pub physical_path: String,
-    
+
     // Optional properties depending on disk topology topology edge cases
     pub serial: Option<String>,
     pub smartctl_exit_code: Option<i32>,

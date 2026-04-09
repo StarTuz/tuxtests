@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AppConfig {
-    pub provider: String, 
+    pub provider: String,
     pub ollama_model: String,
 }
 
@@ -55,7 +55,7 @@ impl AppConfig {
                         return false;
                     }
                     return true;
-                },
+                }
                 Err(e) => {
                     eprintln!("⚠️ TOML Serialization failed natively! Error: {}", e);
                     return false;

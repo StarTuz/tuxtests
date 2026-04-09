@@ -1,5 +1,5 @@
-use crate::models::TuxPayload;
 use crate::ai::{config, gemini, ollama};
+use crate::models::TuxPayload;
 
 /// Inherited verbatim from GEMINI.md Prompt Schema!
 const SYSTEM_PROMPT: &str = "You are an expert Linux diagnostics agent. Analyze the provided JSON representing a Linux machine's hardware layout. Identify specific bottlenecks (e.g., drives at >90% capacity, high-speed SSDs bottlenecked by physical USB 2.0 connections) and provide 3 concrete, actionable upgrade or mitigation suggestions. Format output strictly in Markdown.";
@@ -18,9 +18,15 @@ pub async fn run_analysis(payload: &TuxPayload) {
             return;
         }
     } else if config.provider == "ollama" {
-        ollama::invoke_ollama(&config.ollama_model, &format!("{}\n\n{}", SYSTEM_PROMPT, payload_str)).await
+        ollama::invoke_ollama(
+            &config.ollama_model,
+            &format!("{}\n\n{}", SYSTEM_PROMPT, payload_str),
+        )
+        .await
     } else {
-        eprintln!("❌ Erroneous Provider configuration natively trapped. Switch provider logic via CLI.");
+        eprintln!(
+            "❌ Erroneous Provider configuration natively trapped. Switch provider logic via CLI."
+        );
         return;
     };
 

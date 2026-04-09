@@ -6,15 +6,14 @@ pub fn get_connection_speed(device_name: &str) -> Option<String> {
     let mut enumerator = Enumerator::new().ok()?;
     enumerator.match_subsystem("block").ok()?;
     enumerator.match_sysname(device_name).ok()?;
-    
+
     // Traverse the specific block hardware matches.
     for device in enumerator.scan_devices().ok()? {
-        
         // Core Logic: Walk upwards targeting strictly the "usb" master subsystem root.
         if let Some(usb_parent) = device.parent_with_subsystem("usb").ok().flatten() {
             if let Some(speed_attr) = usb_parent.attribute_value("speed") {
                 let speed_str = speed_attr.to_string_lossy().to_string();
-                
+
                 // Map the integer topology to the exact "Slow Lane" structures the LLM correlates securely.
                 return match speed_str.as_str() {
                     "480" => Some("USB 2.0 (High-Speed)".to_string()),
@@ -26,7 +25,7 @@ pub fn get_connection_speed(device_name: &str) -> Option<String> {
             }
         }
     }
-    
+
     // If it's pure PCIe/SATA and doesn't route through USB legacy logic.
     None
 }

@@ -1,2 +1,2 @@
-pub mod throughput;
 pub mod smart;
+pub mod throughput;
