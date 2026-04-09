@@ -26,12 +26,43 @@ pub fn get_system_specs() -> SystemInfo {
         }
     }
 
+    let hostname = System::host_name()
+        .or_else(|| {
+            fs::read_to_string("/etc/hostname")
+                .ok()
+                .map(|value| value.trim().to_string())
+        })
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| "Unknown Host".to_string());
+
     let kernel_version = System::kernel_version().unwrap_or_else(|| "Unknown Kernel".to_string());
+    let motherboard = read_motherboard();
 
     SystemInfo {
         os_release,
+        hostname,
         kernel_version,
         cpu: cpu_brand,
         ram_gb: total_ram_gb,
+        motherboard,
+    }
+}
+
+fn read_motherboard() -> Option<String> {
+    let vendor = fs::read_to_string("/sys/devices/virtual/dmi/id/board_vendor")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+    let board = fs::read_to_string("/sys/devices/virtual/dmi/id/board_name")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+
+    match (vendor, board) {
+        (Some(vendor), Some(board)) if vendor == board => Some(board),
+        (Some(vendor), Some(board)) => Some(format!("{} {}", vendor, board)),
+        (Some(vendor), None) => Some(vendor),
+        (None, Some(board)) => Some(board),
+        (None, None) => None,
     }
 }

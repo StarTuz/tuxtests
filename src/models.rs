@@ -16,9 +16,11 @@ pub struct TuxPayload {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SystemInfo {
     pub os_release: BTreeMap<String, String>,
+    pub hostname: String,
     pub kernel_version: String,
     pub cpu: String,
     pub ram_gb: u64,
+    pub motherboard: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

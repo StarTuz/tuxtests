@@ -22,13 +22,27 @@ pub fn check_health(device_node: &str) -> (bool, Option<i32>, Option<String>) {
                 );
             }
 
+            if stderr_str.to_lowercase().contains("not authorized")
+                || stderr_str.to_lowercase().contains("authentication failed")
+            {
+                return (
+                    false,
+                    out.status.code(),
+                    Some("anomaly: smartctl access denied by polkit authentication".to_string()),
+                );
+            }
+
             let code = out.status.code().unwrap_or(0);
             if code == 0 {
                 // Perfect Health mathematically via deep S.M.A.R.T parsing.
                 (true, Some(0), None)
             } else {
                 // Predictive failure codes caught explicitly preventing hardware crashes!
-                (false, Some(code), None)
+                (
+                    false,
+                    Some(code),
+                    Some(format!("anomaly: smartctl reported exit code {}", code)),
+                )
             }
         }
         Err(e) => {

@@ -48,7 +48,7 @@ Privileged actions like reading S.M.A.R.T. data (`smartctl`) are handled via `pk
 
 The `--full-bench` command includes a synthetic write test to measure drive throughput.
 
-- **Capacity Guard**: TuxTests will **never** perform a benchmark on a partition with 5GB or less free space.
+- **Capacity Guard**: TuxTests will **never** perform a benchmark on a partition with 5GB or less free space, or with less than 10% free capacity.
 - **Cleanup**: Benchmark files (`.tuxtests_bench.tmp`) are volatile and deleted immediately after the test completes.
 
 ---

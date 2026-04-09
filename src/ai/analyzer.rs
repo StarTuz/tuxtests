@@ -10,30 +10,55 @@ pub async fn run_analysis(payload: &TuxPayload) {
     let payload_str = serde_json::to_string(payload)
         .expect("Critically failed to mathematically stringify TuxPayload models");
 
-    let output = if config.provider == "gemini" {
-        if let Some(key) = config::AppConfig::get_gemini_key() {
-            gemini::invoke_gemini(&key, SYSTEM_PROMPT, &payload_str).await
-        } else {
-            eprintln!("CRITICAL ERROR: Gemini API key natively blocked or missing from Security/Secret Service ring. Run `--set-gemini-key`.");
+    if payload.drives.is_empty() {
+        eprintln!(
+            "⚠️ No drives were discovered in the current scan payload. AI analysis may be incomplete."
+        );
+    }
+
+    let provider = match config::normalize_provider(&config.provider) {
+        Ok(provider) => provider,
+        Err(err) => {
+            eprintln!(
+                "❌ Invalid provider configuration '{}': {}. Use `tuxtests --set-llm-provider <gemini|ollama>` to repair it.",
+                config.provider, err
+            );
             return;
         }
-    } else if config.provider == "ollama" {
-        ollama::invoke_ollama(
-            &config.ollama_url,
-            &config.ollama_model,
-            SYSTEM_PROMPT,
-            &payload_str,
-        )
-        .await
-    } else {
-        eprintln!(
-            "❌ Erroneous Provider configuration natively trapped. Switch provider logic via CLI."
-        );
-        return;
+    };
+
+    let output = match provider.as_str() {
+        "gemini" => {
+            if let Some(key) = config::AppConfig::get_gemini_key() {
+                gemini::invoke_gemini(&key, SYSTEM_PROMPT, &payload_str).await
+            } else {
+                eprintln!(
+                    "❌ Gemini API key is missing from the system keyring. Run `tuxtests --set-gemini-key \"YOUR_KEY_HERE\"` first."
+                );
+                return;
+            }
+        }
+        "ollama" => {
+            eprintln!(
+                "ℹ️ Using Ollama provider with model '{}' at {}.",
+                config.ollama_model, config.ollama_url
+            );
+            ollama::invoke_ollama(
+                &config.ollama_url,
+                &config.ollama_model,
+                SYSTEM_PROMPT,
+                &payload_str,
+            )
+            .await
+        }
+        _ => unreachable!(),
     };
 
     match output {
         Some(markdown) => println!("\n============= AI BOTTLENECK ANALYSIS =============\n\n{}\n\n==================================================", markdown),
-        None => eprintln!("Failed to securely route network inference via {} engine!", config.provider),
+        None => eprintln!(
+            "❌ Failed to route inference through the '{}' provider. Check provider-specific diagnostics above.",
+            provider
+        ),
     }
 }

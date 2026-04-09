@@ -9,8 +9,10 @@ Hardware scan data (from `sysinfo`, `udev`, `lsblk`, `smartctl`) and retrieved l
 ```json
 {
   "system": {
+    "hostname": "workstation-01",
     "cpu": "AMD Ryzen 9 5900X",
-    "ram_gb": 64
+    "ram_gb": 64,
+    "motherboard": "ASUSTeK COMPUTER INC. ROG STRIX B550-I GAMING"
   },
   "drives": [
     {

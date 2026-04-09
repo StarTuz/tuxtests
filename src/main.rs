@@ -125,9 +125,11 @@ async fn main() {
                     map.insert("PRETTY_NAME".to_string(), "Mock GNU/Linux".to_string());
                     map
                 },
+                hostname: "mock-host".to_string(),
                 kernel_version: "6.x-mock".to_string(),
                 cpu: "Mock Sandbox CPU (Threadripper Stub)".to_string(),
                 ram_gb: 128,
+                motherboard: Some("MockBoard 9000".to_string()),
             },
             drives: vec![mocked_drive],
             benchmarks: std::collections::BTreeMap::new(),

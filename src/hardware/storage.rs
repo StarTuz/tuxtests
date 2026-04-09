@@ -15,6 +15,7 @@ pub struct LsblkDevice {
     pub device_type: String,
     pub size: serde_json::Value,
     pub pkname: Option<String>,
+    pub serial: Option<String>,
 
     // Natively parses array of possible physical mounts cleanly.
     pub mountpoints: Option<Vec<Option<String>>>,
@@ -39,7 +40,7 @@ pub fn scan_drives() -> Vec<(DriveInfo, Option<String>)> {
             "-J",
             "-b",
             "-o",
-            "NAME,TYPE,SIZE,PKNAME,MOUNTPOINTS,TRAN,FSTYPE,UUID,LABEL,FSUSE%",
+            "NAME,TYPE,SIZE,PKNAME,SERIAL,MOUNTPOINTS,TRAN,FSTYPE,UUID,LABEL,FSUSE%",
         ])
         .output();
 
@@ -69,13 +70,7 @@ pub fn scan_drives() -> Vec<(DriveInfo, Option<String>)> {
 
     for dev in parsed.blockdevices {
         // Natively trap legacy stringified ints vs modern raw integers elegantly.
-        let size_num: u64 = if dev.size.is_number() {
-            dev.size.as_u64().unwrap_or(0)
-        } else if dev.size.is_string() {
-            dev.size.as_str().unwrap().parse().unwrap_or(0)
-        } else {
-            0
-        };
+        let size_num = parse_size_bytes(&dev.size);
 
         let capacity_gb = size_num / 1_073_741_824;
 
@@ -98,21 +93,12 @@ pub fn scan_drives() -> Vec<(DriveInfo, Option<String>)> {
         };
 
         // Map the structured mount points safely.
-        let mountpoints_vec: Vec<String> = dev
-            .mountpoints
-            .unwrap_or_default()
-            .into_iter()
-            .flatten()
-            .collect();
+        let mountpoints_vec = normalize_mountpoints(dev.mountpoints);
 
         let mount_target = mountpoints_vec.first().cloned();
 
-        let usage_percent = dev
-            .fsuse_percent
-            .unwrap_or_default()
-            .trim_end_matches('%')
-            .parse::<u8>()
-            .unwrap_or(0);
+        let usage_percent = parse_usage_percent(dev.fsuse_percent.as_deref());
+        let is_luks = infer_is_luks(&dev.device_type, dev.fstype.as_deref());
 
         let mapped_drive = DriveInfo {
             name: dev.name,
@@ -130,16 +116,62 @@ pub fn scan_drives() -> Vec<(DriveInfo, Option<String>)> {
             active_mountpoints: mountpoints_vec,
 
             topology,
-            serial: None,
+            serial: dev.serial.filter(|value| !value.trim().is_empty()),
             smartctl_exit_code: None,
             parent: dev.pkname,
-            is_luks: None,
+            is_luks,
         };
 
         drives.push((mapped_drive, mount_target));
     }
 
     drives
+}
+
+fn parse_size_bytes(size: &serde_json::Value) -> u64 {
+    if size.is_number() {
+        size.as_u64().unwrap_or(0)
+    } else if size.is_string() {
+        size.as_str()
+            .unwrap_or_default()
+            .trim()
+            .parse()
+            .unwrap_or(0)
+    } else {
+        0
+    }
+}
+
+fn normalize_mountpoints(mountpoints: Option<Vec<Option<String>>>) -> Vec<String> {
+    mountpoints
+        .unwrap_or_default()
+        .into_iter()
+        .flatten()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .collect()
+}
+
+fn parse_usage_percent(value: Option<&str>) -> u8 {
+    value
+        .unwrap_or_default()
+        .trim()
+        .trim_end_matches('%')
+        .parse::<u8>()
+        .unwrap_or(0)
+}
+
+fn infer_is_luks(device_type: &str, fstype: Option<&str>) -> Option<bool> {
+    let type_hint = device_type.eq_ignore_ascii_case("crypt");
+    let fs_hint = fstype
+        .map(|value| value.eq_ignore_ascii_case("crypto_luks"))
+        .unwrap_or(false);
+
+    if type_hint || fs_hint {
+        Some(true)
+    } else {
+        None
+    }
 }
 
 /// Parses the local /etc/fstab safely into strong typing
@@ -165,4 +197,42 @@ pub fn extract_fstab() -> Vec<crate::models::FstabEntry> {
         }
     }
     entries
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{infer_is_luks, normalize_mountpoints, parse_size_bytes, parse_usage_percent};
+
+    #[test]
+    fn parses_size_from_number_or_string() {
+        assert_eq!(parse_size_bytes(&serde_json::json!(1024)), 1024);
+        assert_eq!(parse_size_bytes(&serde_json::json!("2048")), 2048);
+        assert_eq!(parse_size_bytes(&serde_json::json!(null)), 0);
+    }
+
+    #[test]
+    fn normalizes_mountpoints() {
+        let mountpoints = normalize_mountpoints(Some(vec![
+            Some("/".to_string()),
+            None,
+            Some(" /home ".to_string()),
+            Some("".to_string()),
+        ]));
+
+        assert_eq!(mountpoints, vec!["/".to_string(), "/home".to_string()]);
+    }
+
+    #[test]
+    fn parses_usage_percent_safely() {
+        assert_eq!(parse_usage_percent(Some("84%")), 84);
+        assert_eq!(parse_usage_percent(Some(" 9 ")), 9);
+        assert_eq!(parse_usage_percent(None), 0);
+    }
+
+    #[test]
+    fn infers_luks_from_type_or_fstype() {
+        assert_eq!(infer_is_luks("crypt", None), Some(true));
+        assert_eq!(infer_is_luks("part", Some("crypto_LUKS")), Some(true));
+        assert_eq!(infer_is_luks("disk", Some("ext4")), None);
+    }
 }
