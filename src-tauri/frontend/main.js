@@ -4,16 +4,22 @@ const state = {
   config: null,
   payload: null,
   selectedDrive: 0,
+  analysis: null,
+  analysisMode: "rendered",
 };
 
 const el = {
   status: document.querySelector("#status"),
+  summary: document.querySelector("#summary"),
   system: document.querySelector("#system"),
   drives: document.querySelector("#drives"),
   driveCount: document.querySelector("#drive-count"),
   details: document.querySelector("#drive-details"),
   diagnostics: document.querySelector("#diagnostics"),
   analysis: document.querySelector("#analysis"),
+  analysisRendered: document.querySelector("#analysis-rendered-view"),
+  analysisRenderedToggle: document.querySelector("#analysis-rendered"),
+  analysisRawToggle: document.querySelector("#analysis-raw"),
   refresh: document.querySelector("#refresh"),
   fullBench: document.querySelector("#full-bench"),
   analyze: document.querySelector("#analyze"),
@@ -49,6 +55,27 @@ function renderSystem() {
   `;
 }
 
+function renderSummary() {
+  if (!state.payload) {
+    el.summary.innerHTML = "";
+    return;
+  }
+
+  const drives = state.payload.drives ?? [];
+  const usbCount = drives.filter((drive) => drive.connection.toLowerCase().includes("usb")).length;
+  const warningCount = drives.filter((drive) => !drive.health_ok).length;
+  const anomalyCount = state.payload.kernel_anomalies?.length ?? 0;
+  const benchmarkCount = Object.keys(state.payload.benchmarks ?? {}).length;
+
+  el.summary.innerHTML = `
+    <span>${drives.length} drives</span>
+    <span>${usbCount} USB</span>
+    <span>${warningCount} warnings</span>
+    <span>${anomalyCount} anomalies</span>
+    <span>${benchmarkCount} benchmarks</span>
+  `;
+}
+
 function renderConfigForm() {
   if (!state.config) {
     return;
@@ -72,6 +99,7 @@ function renderDrives() {
           <span>${escapeHtml(drive.connection)}</span>
           <span>${drive.capacity_gb} GB</span>
           <span>${drive.usage_percent}%</span>
+          <span>${benchmarkForDrive(drive.name)}</span>
         </button>
       `;
     })
@@ -94,16 +122,24 @@ function renderDetails() {
   }
 
   const mounts = drive.active_mountpoints?.length ? drive.active_mountpoints.join(", ") : "none";
+  const topology = drive.topology?.length
+    ? drive.topology
+        .map((node) => `- L${node.level} ${node.subsystem} ${node.sysname}`)
+        .join("\n")
+    : "No topology nodes in payload.";
   const pciePath = drive.pcie_path?.length
     ? drive.pcie_path
         .map((path) => {
           const speed = path.current_link_speed ?? "?";
           const width = path.current_link_width ? `x${path.current_link_width}` : "x?";
-          const aspm = path.aspm ?? path.aspm_probe_error ?? "ASPM unknown";
-          return `- ${path.bdf} ${speed} ${width}: ${aspm}`;
+          const aspm = path.aspm ?? "ASPM unknown";
+          const capability = path.aspm_capability ? ` capability=${path.aspm_capability}` : "";
+          const probe = path.aspm_probe_error ? ` probe=${path.aspm_probe_error}` : "";
+          return `- ${path.bdf} ${speed} ${width}: ${aspm}${capability}${probe}`;
         })
         .join("\n")
     : "No PCIe path in payload.";
+  const benchmark = benchmarkForDrive(drive.name);
 
   el.details.innerHTML = `
     <dl>
@@ -113,7 +149,10 @@ function renderDetails() {
       <dt>Mounts</dt><dd>${escapeHtml(mounts)}</dd>
       <dt>Health</dt><dd>${drive.health_ok ? "OK" : "Needs attention"}</dd>
       <dt>Serial</dt><dd>${escapeHtml(drive.serial ?? "unknown")}</dd>
+      <dt>Benchmark</dt><dd>${escapeHtml(benchmark)}</dd>
     </dl>
+    <h3>Topology</h3>
+    <pre>${escapeHtml(topology)}</pre>
     <h3>PCIe Path</h3>
     <pre>${escapeHtml(pciePath)}</pre>
   `;
@@ -125,7 +164,14 @@ function renderDiagnostics() {
 }
 
 function renderAnalysis(markdown) {
-  el.analysis.textContent = markdown ?? "Run analysis after a payload refresh.";
+  const text = markdown ?? "Run analysis after a payload refresh.";
+  state.analysis = text;
+  el.analysis.textContent = text;
+  el.analysisRendered.innerHTML = markdownToHtml(text);
+  el.analysisRendered.classList.toggle("hidden", state.analysisMode !== "rendered");
+  el.analysis.classList.toggle("hidden", state.analysisMode !== "raw");
+  el.analysisRenderedToggle.classList.toggle("active", state.analysisMode === "rendered");
+  el.analysisRawToggle.classList.toggle("active", state.analysisMode === "raw");
 }
 
 async function refreshPayload(fullBench = false) {
@@ -136,6 +182,7 @@ async function refreshPayload(fullBench = false) {
     renderConfigForm();
     state.payload = await invoke("get_payload", { fullBench });
     state.selectedDrive = Math.min(state.selectedDrive, Math.max(0, state.payload.drives.length - 1));
+    renderSummary();
     renderSystem();
     renderDrives();
     renderDetails();
@@ -202,6 +249,73 @@ function setBusy(isBusy) {
   el.configForm.querySelector("button").disabled = isBusy;
 }
 
+function benchmarkForDrive(name) {
+  const result = state.payload?.benchmarks?.[name];
+  return result ? `${result.write_mb_s} MB/s` : "not run";
+}
+
+function setAnalysisMode(mode) {
+  state.analysisMode = mode;
+  renderAnalysis(state.analysis);
+}
+
+function markdownToHtml(markdown) {
+  const lines = String(markdown).split("\n");
+  const html = [];
+  let inList = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      if (inList) {
+        html.push("</ul>");
+        inList = false;
+      }
+      continue;
+    }
+
+    const heading = trimmed.match(/^(#{1,4})\s+(.+)$/);
+    if (heading) {
+      if (inList) {
+        html.push("</ul>");
+        inList = false;
+      }
+      const level = Math.min(heading[1].length + 2, 4);
+      html.push(`<h${level}>${inlineMarkdown(heading[2])}</h${level}>`);
+      continue;
+    }
+
+    const listItem = trimmed.match(/^[-*]\s+(.+)$/);
+    if (listItem) {
+      if (!inList) {
+        html.push("<ul>");
+        inList = true;
+      }
+      html.push(`<li>${inlineMarkdown(listItem[1])}</li>`);
+      continue;
+    }
+
+    if (inList) {
+      html.push("</ul>");
+      inList = false;
+    }
+    html.push(`<p>${inlineMarkdown(trimmed)}</p>`);
+  }
+
+  if (inList) {
+    html.push("</ul>");
+  }
+
+  return html.join("");
+}
+
+function inlineMarkdown(value) {
+  return escapeHtml(value)
+    .replaceAll(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replaceAll(/`([^`]+)`/g, "<code>$1</code>");
+}
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -215,5 +329,7 @@ el.refresh.addEventListener("click", () => refreshPayload(false));
 el.fullBench.addEventListener("click", () => refreshPayload(true));
 el.analyze.addEventListener("click", analyzePayload);
 el.configForm.addEventListener("submit", saveConfig);
+el.analysisRenderedToggle.addEventListener("click", () => setAnalysisMode("rendered"));
+el.analysisRawToggle.addEventListener("click", () => setAnalysisMode("raw"));
 
 refreshPayload();

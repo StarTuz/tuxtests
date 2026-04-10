@@ -100,6 +100,23 @@ h3 {
   color: var(--muted);
 }
 
+.summary-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 1rem;
+}
+
+.summary-strip span {
+  border: 1px solid rgba(86, 241, 167, 0.24);
+  border-radius: 999px;
+  padding: 0.42rem 0.68rem;
+  color: #c9f4df;
+  background: rgba(86, 241, 167, 0.08);
+  font-family: "IBM Plex Mono", "JetBrains Mono", monospace;
+  font-size: 0.88rem;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -193,7 +210,7 @@ dd {
 
 .drive-row {
   display: grid;
-  grid-template-columns: 0.7fr 1.6fr 0.7fr 0.4fr;
+  grid-template-columns: 0.7fr 1.6fr 0.7fr 0.4fr 0.75fr;
   gap: 0.75rem;
   width: 100%;
   border-radius: 16px;
@@ -226,6 +243,55 @@ pre {
 
 .analysis-card pre {
   max-height: 430px;
+}
+
+.segmented {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.segment {
+  padding: 0.42rem 0.7rem;
+  border-color: transparent;
+  background: transparent;
+}
+
+.segment.active {
+  border-color: rgba(244, 184, 96, 0.72);
+  background: rgba(244, 184, 96, 0.14);
+}
+
+.hidden {
+  display: none;
+}
+
+.analysis-rendered {
+  max-height: 430px;
+  overflow: auto;
+  color: #d3eadf;
+  line-height: 1.55;
+}
+
+.analysis-rendered h3,
+.analysis-rendered h4 {
+  margin: 1rem 0 0.4rem;
+  color: var(--accent-2);
+}
+
+.analysis-rendered p,
+.analysis-rendered ul {
+  margin: 0 0 0.7rem;
+}
+
+.analysis-rendered code {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.4rem;
+  padding: 0.08rem 0.24rem;
+  background: rgba(0, 0, 0, 0.28);
 }
 
 @media (max-width: 850px) {

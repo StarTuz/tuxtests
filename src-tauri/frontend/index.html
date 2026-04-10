@@ -14,6 +14,7 @@
           <p class="eyebrow">TuxTests GUI</p>
           <h1>Linux hardware intelligence</h1>
           <p id="status" class="status">Starting graphical shell...</p>
+          <div id="summary" class="summary-strip" aria-label="Payload summary"></div>
         </div>
         <div class="actions">
           <button id="refresh">Refresh</button>
@@ -69,8 +70,15 @@
         </article>
 
         <article class="card analysis-card">
-          <h2>AI Analysis</h2>
-          <pre id="analysis">Run analysis after a payload refresh.</pre>
+          <div class="card-heading">
+            <h2>AI Analysis</h2>
+            <div class="segmented" role="tablist" aria-label="Analysis display mode">
+              <button id="analysis-rendered" class="segment active" type="button">Rendered</button>
+              <button id="analysis-raw" class="segment" type="button">Raw</button>
+            </div>
+          </div>
+          <div id="analysis-rendered-view" class="analysis-rendered">Run analysis after a payload refresh.</div>
+          <pre id="analysis" class="analysis-raw hidden">Run analysis after a payload refresh.</pre>
         </article>
       </section>
     </main>
