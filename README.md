@@ -2,6 +2,8 @@
 
 TuxTests is a high-performance, memory-safe Linux hardware diagnostic and suggestion tool built in Rust. It utilizes modern AI (Gemini/Ollama) to identify system bottlenecks and provide actionable upgrade advice.
 
+The current committed Rust CLI/backend is the source of truth. Future Ratatui and Tauri interfaces should be layered on top of this backend contract rather than replacing or re-implementing hardware collection logic.
+
 ## 🚀 Features
 
 - **Core Hardware Investigation**: CPU, RAM, kernel, hostname, motherboard, and block device identification using `sysinfo`, `lsblk`, and Linux system files.
@@ -72,3 +74,4 @@ TuxTests emphasizes reliability through:
 - [GEMINI.md](GEMINI.md): AI Pipeline and JSON Schema definitions (Dynamic v1beta mapping).
 - [SKILLS.md](SKILLS.md): Technical details on `udev` and RAG strategies.
 - [docs/UI_CONTRACT.md](docs/UI_CONTRACT.md): Stable frontend and automation integration contract.
+- [docs/HYBRID_ARCHITECTURE_PLAN.md](docs/HYBRID_ARCHITECTURE_PLAN.md): Grounded plan for Ratatui/Tauri on top of the validated backend.
