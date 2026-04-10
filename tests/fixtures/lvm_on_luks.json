@@ -13,5 +13,6 @@
   "parent": "nvme0n1p3",
   "is_luks": true,
   "serial": "MAPPER_LUKS_LVM",
-  "topology": []
+  "topology": [],
+  "pcie_path": []
 }

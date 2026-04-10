@@ -16,7 +16,8 @@ Hardware scan data (from `sysinfo`, `udev`, `lsblk`, `smartctl`) and retrieved l
     "kernel_version": "6.13.5-zen1-1-zen",
     "cpu": "AMD Ryzen 9 5900X",
     "ram_gb": 64,
-    "motherboard": "ASUSTeK COMPUTER INC. ROG STRIX B550-I GAMING"
+    "motherboard": "ASUSTeK COMPUTER INC. ROG STRIX B550-I GAMING",
+    "pcie_aspm_policy": "default"
   },
   "drives": [
     {
@@ -35,6 +36,20 @@ Hardware scan data (from `sysinfo`, `udev`, `lsblk`, `smartctl`) and retrieved l
         { "level": 1, "subsystem": "pci", "sysname": "0000:00:02.4" },
         { "level": 2, "subsystem": "nvme", "sysname": "nvme0" },
         { "level": 3, "subsystem": "block", "sysname": "nvme0n1" }
+      ],
+      "pcie_path": [
+        {
+          "bdf": "0000:03:00.0",
+          "driver": "nvme",
+          "current_link_speed": "16.0 GT/s PCIe",
+          "current_link_width": "4",
+          "max_link_speed": "16.0 GT/s PCIe",
+          "max_link_width": "4",
+          "aspm_capability": "ASPM L1",
+          "aspm": "ASPM Disabled",
+          "aspm_source": "lspci",
+          "aspm_probe_error": null
+        }
       ]
     },
     {
@@ -55,6 +70,20 @@ Hardware scan data (from `sysinfo`, `udev`, `lsblk`, `smartctl`) and retrieved l
         { "level": 3, "subsystem": "usb", "sysname": "2-1" },
         { "level": 4, "subsystem": "scsi", "sysname": "host6" },
         { "level": 5, "subsystem": "block", "sysname": "sda" }
+      ],
+      "pcie_path": [
+        {
+          "bdf": "0000:00:14.0",
+          "driver": "xhci_hcd",
+          "current_link_speed": null,
+          "current_link_width": null,
+          "max_link_speed": null,
+          "max_link_width": null,
+          "aspm_capability": null,
+          "aspm": null,
+          "aspm_source": null,
+          "aspm_probe_error": "unprivileged lspci output did not expose PCIe link details for 0000:00:14.0"
+        }
       ]
     }
   ],
@@ -83,7 +112,7 @@ Hardware scan data (from `sysinfo`, `udev`, `lsblk`, `smartctl`) and retrieved l
 
 TuxTests uses the following system prompt injected ahead of the data payload:
 
-> "You are an expert Linux diagnostics agent. Analyze the provided JSON representing a Linux machine's hardware layout. Identify specific bottlenecks (e.g., drives at >90% capacity, high-speed SSDs bottlenecked by physical USB 2.0 connections) and provide 3 concrete, actionable upgrade or mitigation suggestions. Format output strictly in Markdown."
+> "You are an expert Linux diagnostics agent. Analyze the provided JSON representing a Linux machine's hardware layout. Identify specific bottlenecks (e.g., drives at >90% capacity, high-speed SSDs bottlenecked by physical USB 2.0 connections) and provide 3 concrete, actionable upgrade or mitigation suggestions. Format output strictly in Markdown. When PCIe or ASPM issues are discussed, ground your advice in the payload's `pcie_aspm_policy` and each drive's `pcie_path` facts. Use both `aspm_capability` and `aspm` when present. Do not recommend disabling ASPM if the relevant link already reports `ASPM Disabled` or `ASPM not supported`. If `aspm_probe_error` is present, treat that as an inspection limitation and say so explicitly."
 
 ## 3. Invocation Strategy
 

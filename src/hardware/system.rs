@@ -1,3 +1,4 @@
+use crate::hardware::pci;
 use crate::models::SystemInfo;
 use std::fs;
 use sysinfo::System;
@@ -45,6 +46,7 @@ pub fn get_system_specs() -> SystemInfo {
         cpu: cpu_brand,
         ram_gb: total_ram_gb,
         motherboard,
+        pcie_aspm_policy: pci::read_aspm_policy(),
     }
 }
 

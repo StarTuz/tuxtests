@@ -15,5 +15,19 @@
     { "level": 1, "subsystem": "pci", "sysname": "0000:00:14.0" },
     { "level": 2, "subsystem": "usb", "sysname": "usb2" },
     { "level": 3, "subsystem": "usb", "sysname": "2-1" }
+  ],
+  "pcie_path": [
+    {
+      "bdf": "0000:00:14.0",
+      "driver": "xhci_hcd",
+      "current_link_speed": null,
+      "current_link_width": null,
+      "max_link_speed": null,
+      "max_link_width": null,
+      "aspm_capability": null,
+      "aspm": null,
+      "aspm_source": null,
+      "aspm_probe_error": "unprivileged lspci output did not expose PCIe link details for 0000:00:14.0"
+    }
   ]
 }

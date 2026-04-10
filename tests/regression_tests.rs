@@ -10,6 +10,14 @@ fn test_slow_lane_nvme_adapter() {
     assert_eq!(drive.drive_type, "NVMe");
     assert_eq!(drive.connection, "USB 2.0 (High-Speed)");
     assert_eq!(drive.serial.unwrap(), "EXT_NVME_001");
+    assert_eq!(drive.pcie_path.len(), 1);
+    assert_eq!(drive.pcie_path[0].bdf, "0000:00:14.0");
+    assert_eq!(drive.pcie_path[0].aspm_capability, None);
+    assert!(drive.pcie_path[0]
+        .aspm_probe_error
+        .as_ref()
+        .expect("probe error")
+        .contains("unprivileged lspci output did not expose PCIe link details"));
     println!("NVMe over USB slow lane securely typed and parsed.");
 }
 
@@ -24,6 +32,7 @@ fn test_zombie_drive_smartctl_failure() {
         drive.physical_path,
         "/devices/pci0000:00/0000:00:1f.2/ata2/host1/target1:0:0/1:0:0:0"
     );
+    assert!(drive.pcie_path.is_empty());
     println!("Zombie drive edge case explicitly validated.");
 }
 
@@ -35,5 +44,6 @@ fn test_lvm_on_luks() {
     assert_eq!(drive.parent.unwrap(), "nvme0n1p3");
     assert_eq!(drive.is_luks, Some(true));
     assert_eq!(drive.drive_type, "LVM");
+    assert!(drive.pcie_path.is_empty());
     println!("LUKS and nested Mapper device parsed without Option<T> explosion.");
 }

@@ -146,6 +146,7 @@ async fn main() {
                 cpu: "Mock Sandbox CPU (Threadripper Stub)".to_string(),
                 ram_gb: 128,
                 motherboard: Some("MockBoard 9000".to_string()),
+                pcie_aspm_policy: Some("default".to_string()),
             },
             drives: vec![mocked_drive],
             benchmarks: std::collections::BTreeMap::new(),
@@ -214,6 +215,10 @@ fn build_payload(full_bench: bool) -> models::TuxPayload {
         }
 
         storage_drives.push(drive);
+    }
+
+    for drive in &mut storage_drives {
+        hardware::pci::enrich_anomaly_link_aspm(&mut drive.pcie_path, &kernel_anomalies);
     }
 
     let total_drives = storage_drives.len();

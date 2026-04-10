@@ -12,5 +12,6 @@
   "label": "DataGrave",
   "active_mountpoints": [],
   "serial": "ZOMBIE_HDD_FAIL",
-  "topology": []
+  "topology": [],
+  "pcie_path": []
 }

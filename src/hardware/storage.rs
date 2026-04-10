@@ -1,4 +1,4 @@
-use crate::hardware::connection;
+use crate::hardware::{connection, pci};
 use crate::models::DriveInfo;
 use std::process::Command;
 
@@ -99,6 +99,7 @@ pub fn scan_drives() -> Vec<(DriveInfo, Option<String>)> {
 
         let usage_percent = parse_usage_percent(dev.fsuse_percent.as_deref());
         let is_luks = infer_is_luks(&dev.device_type, dev.fstype.as_deref());
+        let pcie_path = pci::collect_pcie_path(&topology);
 
         let mapped_drive = DriveInfo {
             name: dev.name,
@@ -116,6 +117,7 @@ pub fn scan_drives() -> Vec<(DriveInfo, Option<String>)> {
             active_mountpoints: mountpoints_vec,
 
             topology,
+            pcie_path,
             serial: dev.serial.filter(|value| !value.trim().is_empty()),
             smartctl_exit_code: None,
             parent: dev.pkname,

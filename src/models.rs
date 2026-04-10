@@ -21,6 +21,7 @@ pub struct SystemInfo {
     pub cpu: String,
     pub ram_gb: u64,
     pub motherboard: Option<String>,
+    pub pcie_aspm_policy: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -41,6 +42,8 @@ pub struct DriveInfo {
 
     /// New granular lineages for UI tree visualization
     pub topology: Vec<TopologyNode>,
+    #[serde(default)]
+    pub pcie_path: Vec<PcieDeviceInfo>,
 
     // Optional properties depending on disk topology topology edge cases
     pub serial: Option<String>,
@@ -54,6 +57,20 @@ pub struct TopologyNode {
     pub level: usize,
     pub subsystem: String,
     pub sysname: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct PcieDeviceInfo {
+    pub bdf: String,
+    pub driver: Option<String>,
+    pub current_link_speed: Option<String>,
+    pub current_link_width: Option<String>,
+    pub max_link_speed: Option<String>,
+    pub max_link_width: Option<String>,
+    pub aspm_capability: Option<String>,
+    pub aspm: Option<String>,
+    pub aspm_source: Option<String>,
+    pub aspm_probe_error: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

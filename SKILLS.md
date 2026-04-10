@@ -48,6 +48,7 @@ TuxTests utilizes a centralized `src/models.rs` to define the hardware footprint
 ### Pattern: Edge-Case Handling via Option<T>
 Instead of brittle string parsing, the core engine deserializes hardware snapshots into strongly-typed structs.
 - **Optional Attributes**: Fields like `serial`, `is_luks`, `parent`, `motherboard`, or `smartctl_exit_code` are wrapped in `Option<T>` where appropriate. This allows a single hardware model to represent anything from a standard SATA drive to a complex encrypted LVM mapper without type explosions.
+- **PCIe Context**: Drives now carry a `pcie_path` collection when PCI devices are present in their topology. This gives downstream analysis a concrete place to inspect bridge/device BDFs, drivers, link speeds, widths, ASPM capability, observed ASPM state, and whether the reading came from unprivileged or privileged inspection. When probing fails, the payload preserves that failure in `aspm_probe_error` instead of silently flattening everything to `null`.
 - **Serialization Determinism**: The system uses `std::collections::BTreeMap` for the benchmarks collection. This guarantees that drives are always presented to the LLM in a consistent, alphabetic order, preventing positional bias during analysis.
 
 ## 6. Benchmark Guardrails
@@ -59,7 +60,15 @@ The throughput path now enforces both absolute and relative free-space limits be
 - At least **10% free capacity** is required.
 - Benchmark diagnostics are emitted on `stderr` so JSON payload dumping can keep `stdout` machine-readable.
 
-## 7. Secret Management via Keyring
+## 7. PCIe Recommendation Guardrails
+
+TuxTests now collects the global Linux ASPM policy and per-drive PCIe path facts when they are visible on the host.
+
+### Current Rule:
+- ASPM-related remediation should be treated as conditional on observed payload facts, not as a generic recommendation.
+- If unprivileged inspection cannot read PCIe link details for anomaly-linked devices, TuxTests retries those BDFs through privileged `lspci` paths and records either the successful source or the probe failure reason.
+
+## 8. Secret Management via Keyring
 
 To avoid leaking API keys in logs or process trees, TuxTests utilizes the `keyring` crate.
 
