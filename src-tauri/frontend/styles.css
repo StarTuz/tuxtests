@@ -128,6 +128,36 @@ h3 {
   grid-column: span 2;
 }
 
+.config-form {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.config-form label {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--accent-2);
+  font-family: "IBM Plex Mono", "JetBrains Mono", monospace;
+  font-size: 0.9rem;
+}
+
+.config-form input,
+.config-form select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.72rem 0.82rem;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.22);
+  font: inherit;
+}
+
+.config-form input:focus,
+.config-form select:focus {
+  border-color: rgba(86, 241, 167, 0.85);
+  outline: none;
+}
+
 .card-heading {
   display: flex;
   align-items: center;

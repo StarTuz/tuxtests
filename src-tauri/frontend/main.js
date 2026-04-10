@@ -15,7 +15,12 @@ const el = {
   diagnostics: document.querySelector("#diagnostics"),
   analysis: document.querySelector("#analysis"),
   refresh: document.querySelector("#refresh"),
+  fullBench: document.querySelector("#full-bench"),
   analyze: document.querySelector("#analyze"),
+  configForm: document.querySelector("#config-form"),
+  provider: document.querySelector("#provider"),
+  ollamaModel: document.querySelector("#ollama-model"),
+  ollamaUrl: document.querySelector("#ollama-url"),
 };
 
 function setStatus(message) {
@@ -42,6 +47,16 @@ function renderSystem() {
     <dt>ASPM Policy</dt><dd>${escapeHtml(system.pcie_aspm_policy ?? "unknown")}</dd>
     <dt>AI Provider</dt><dd>${escapeHtml(provider)} (${escapeHtml(model)})</dd>
   `;
+}
+
+function renderConfigForm() {
+  if (!state.config) {
+    return;
+  }
+
+  el.provider.value = state.config.provider;
+  el.ollamaModel.value = state.config.ollama_model;
+  el.ollamaUrl.value = state.config.ollama_url;
 }
 
 function renderDrives() {
@@ -113,20 +128,44 @@ function renderAnalysis(markdown) {
   el.analysis.textContent = markdown ?? "Run analysis after a payload refresh.";
 }
 
-async function refreshPayload() {
+async function refreshPayload(fullBench = false) {
   setBusy(true);
-  setStatus("Collecting backend payload...");
+  setStatus(fullBench ? "Collecting full-bench backend payload..." : "Collecting backend payload...");
   try {
     state.config = await invoke("get_config");
-    state.payload = await invoke("get_payload", { fullBench: false });
+    renderConfigForm();
+    state.payload = await invoke("get_payload", { fullBench });
     state.selectedDrive = Math.min(state.selectedDrive, Math.max(0, state.payload.drives.length - 1));
     renderSystem();
     renderDrives();
     renderDetails();
     renderDiagnostics();
-    setStatus(`Loaded ${state.payload.drives.length} drives from the shared Rust backend.`);
+    setStatus(
+      `Loaded ${state.payload.drives.length} drives from the shared Rust backend${fullBench ? " with full-bench data" : ""}.`,
+    );
   } catch (error) {
     setStatus(`Payload refresh failed: ${error}`);
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function saveConfig(event) {
+  event.preventDefault();
+
+  setBusy(true);
+  setStatus("Saving AI configuration through the shared Rust backend...");
+  try {
+    state.config = await invoke("update_config", {
+      provider: el.provider.value,
+      ollamaModel: el.ollamaModel.value,
+      ollamaUrl: el.ollamaUrl.value,
+    });
+    renderConfigForm();
+    renderSystem();
+    setStatus(`Saved AI config: ${state.config.provider} / ${state.config.ollama_model}.`);
+  } catch (error) {
+    setStatus(`Config save failed: ${error}`);
   } finally {
     setBusy(false);
   }
@@ -155,7 +194,12 @@ async function analyzePayload() {
 
 function setBusy(isBusy) {
   el.refresh.disabled = isBusy;
+  el.fullBench.disabled = isBusy;
   el.analyze.disabled = isBusy;
+  el.provider.disabled = isBusy;
+  el.ollamaModel.disabled = isBusy;
+  el.ollamaUrl.disabled = isBusy;
+  el.configForm.querySelector("button").disabled = isBusy;
 }
 
 function escapeHtml(value) {
@@ -167,7 +211,9 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-el.refresh.addEventListener("click", refreshPayload);
+el.refresh.addEventListener("click", () => refreshPayload(false));
+el.fullBench.addEventListener("click", () => refreshPayload(true));
 el.analyze.addEventListener("click", analyzePayload);
+el.configForm.addEventListener("submit", saveConfig);
 
 refreshPayload();

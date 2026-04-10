@@ -1,9 +1,23 @@
 use tuxtests::ai::config::AppConfig;
+use tuxtests::engine::ConfigUpdate;
 use tuxtests::models::TuxPayload;
 
 #[tauri::command]
 pub fn get_config() -> AppConfig {
     tuxtests::engine::load_config()
+}
+
+#[tauri::command]
+pub fn update_config(
+    provider: String,
+    ollama_model: String,
+    ollama_url: String,
+) -> Result<AppConfig, String> {
+    tuxtests::engine::apply_config_update(ConfigUpdate {
+        provider: Some(provider),
+        ollama_model: Some(ollama_model),
+        ollama_url: Some(ollama_url),
+    })
 }
 
 #[tauri::command]

@@ -17,6 +17,7 @@
         </div>
         <div class="actions">
           <button id="refresh">Refresh</button>
+          <button id="full-bench">Full Bench</button>
           <button id="analyze">Analyze</button>
         </div>
       </section>
@@ -25,6 +26,28 @@
         <article class="card system-card">
           <h2>System</h2>
           <dl id="system"></dl>
+        </article>
+
+        <article class="card config-card">
+          <h2>AI Config</h2>
+          <form id="config-form" class="config-form">
+            <label>
+              Provider
+              <select id="provider">
+                <option value="gemini">Gemini</option>
+                <option value="ollama">Ollama</option>
+              </select>
+            </label>
+            <label>
+              Ollama Model
+              <input id="ollama-model" type="text" autocomplete="off" />
+            </label>
+            <label>
+              Ollama URL
+              <input id="ollama-url" type="url" autocomplete="off" />
+            </label>
+            <button type="submit">Save Config</button>
+          </form>
         </article>
 
         <article class="card drives-card">

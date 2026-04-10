@@ -61,7 +61,7 @@ Build the Tauri shell as a second presentation layer over the same backend facad
 
 Initial Phase C slice:
 
-- `src-tauri/src/commands.rs` exposes only `get_config`, `get_payload`, and `analyze_payload`.
+- `src-tauri/src/commands.rs` exposes only thin backend calls: `get_config`, `update_config`, `get_payload`, and `analyze_payload`.
 - `src-tauri/frontend/` is a static frontend with no hardware mocks or separate schema.
 - Future GUI features should extend these commands or the shared backend facade, not create UI-local collection code.
 

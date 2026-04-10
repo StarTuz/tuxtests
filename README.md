@@ -76,7 +76,9 @@ tuxtests --print-config
 The first Tauri slice lives in `src-tauri/` and intentionally stays thin:
 
 - `get_config` calls the shared Rust config facade.
+- `update_config` applies provider/model/url edits through the shared Rust validation path.
 - `get_payload` calls the shared Rust hardware payload collector.
+- `get_payload(full_bench=true)` uses the same deeper SMART/benchmark path as the CLI/TUI.
 - `analyze_payload` calls the quiet shared AI analysis path.
 - The frontend only renders system, drive, diagnostic, and analysis data returned by the backend.
 

@@ -5,6 +5,7 @@ pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             commands::get_config,
+            commands::update_config,
             commands::get_payload,
             commands::analyze_payload
         ])
