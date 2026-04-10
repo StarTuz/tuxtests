@@ -35,6 +35,9 @@ The current committed Rust CLI/backend is the source of truth. Future Ratatui an
 TuxTests is currently in a functional MVP state. For detailed flag documentation, see [CLI.md](CLI.md).
 
 ```bash
+# Launch the Ratatui terminal dashboard
+tuxtests --tui
+
 # Set your Gemini API key in the secure keyring
 tuxtests --set-gemini-key "your_api_key_here"
 
@@ -53,6 +56,16 @@ tuxtests --dump-payload
 # Print normalized runtime config as JSON
 tuxtests --print-config
 ```
+
+### Ratatui Dashboard
+
+`tuxtests --tui` launches the first hybrid-interface slice on top of the shared backend facade. It does not reimplement hardware logic in the UI layer.
+
+- Uses the same payload collection and AI analysis path as the classic CLI.
+- Supports standard refresh with `r`, full-bench refresh with `b`, and AI analysis with `a`.
+- Lets you move between drives with `j/k` or the arrow keys.
+- Includes backend-driven config editing with `c`.
+- Supports scroll focus cycling with `tab` and panel scrolling with `PgUp` / `PgDn`.
 
 ## 🏗 Project Structure
 

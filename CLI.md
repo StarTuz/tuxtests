@@ -6,6 +6,9 @@ This document provides a comprehensive guide to the command-line interface of Tu
 
 ### Basic Analysis
 
+- `--tui`: Launches the Ratatui terminal dashboard.
+  - **Scope**: Uses the same backend payload collection and AI analysis flow as the standard CLI.
+  - **Interaction**: `r` refresh, `b` full-bench refresh, `a` analyze, `c` edit config, `j/k` select drives, `tab` change scroll focus, `PgUp/PgDn` scroll active panel, `q` quit.
 - `-a, --analyze`: Performs a standard, unprivileged hardware scan.
   - **Scope**: CPU, RAM, kernel, hostname, motherboard, block device topology, and USB connection speeds.
   - **Privileges**: None (does not prompt for password).
@@ -46,6 +49,7 @@ Privileged actions like reading S.M.A.R.T. data (`smartctl`) are handled via `pk
 
 - TuxTests only requests elevation when strictly necessary (e.g., when the `--full-bench` flag is used).
 - Individual commands are wrapped, meaning the tool never runs its entire logic as root.
+- The Ratatui dashboard does not invoke interactive Polkit prompts during normal PCIe inspection. If richer PCIe visibility is needed, running TuxTests itself under `sudo` will expose more `lspci` detail than an unprivileged session.
 
 ---
 
@@ -86,3 +90,11 @@ For frontend or automation integration, prefer these stable interfaces:
   - Returns the enriched payload including SMART and throughput fields on `stdout`.
 
 Human-oriented status updates and troubleshooting messages are written to `stderr` so `stdout` can be consumed as structured data.
+
+## 🖥 Terminal UI Notes
+
+The Ratatui dashboard is the first hybrid UI layer built on top of the shared backend facade.
+
+- Config edits in the dashboard are applied through the same backend validation and persistence path used by CLI flags.
+- Long drive details, diagnostics, and analysis output are scrollable from within the dashboard.
+- `--tui` is intended as an operator-facing workflow; for machine integration, keep using `--print-config` and `--dump-payload`.
