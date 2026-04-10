@@ -7,6 +7,7 @@ pub async fn invoke_gemini(
     api_key: &str,
     system_prompt: &str,
     payload_json: &str,
+    emit_diagnostics: bool,
 ) -> Option<String> {
     let client = Client::builder()
         .timeout(Duration::from_secs(60))
@@ -67,7 +68,9 @@ pub async fn invoke_gemini(
     let resp = match client.post(&url).json(&request_body).send().await {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("⚠️ CRITICAL ERROR: Network mapping failed trying to reach Deepmind. Ensure internet connectivity natively. {}", e);
+            if emit_diagnostics {
+                eprintln!("⚠️ CRITICAL ERROR: Network mapping failed trying to reach Deepmind. Ensure internet connectivity natively. {}", e);
+            }
             return None;
         }
     };
@@ -78,10 +81,12 @@ pub async fn invoke_gemini(
             .text()
             .await
             .unwrap_or_else(|_| "Unknown Google Endpoint Error".to_string());
-        eprintln!(
-            "❌ Gemini API strongly rejected the request! HTTP {}\nDetails: {}",
-            status, err_text
-        );
+        if emit_diagnostics {
+            eprintln!(
+                "❌ Gemini API strongly rejected the request! HTTP {}\nDetails: {}",
+                status, err_text
+            );
+        }
         return None;
     }
 

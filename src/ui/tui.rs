@@ -408,7 +408,7 @@ fn spawn_refresh(tx: mpsc::Sender<UiEvent>, full_bench: bool) {
 
 fn spawn_analysis(tx: mpsc::Sender<UiEvent>, payload: TuxPayload) {
     tokio::spawn(async move {
-        let result = engine::analyze_payload(&payload).await;
+        let result = engine::analyze_payload_quiet(&payload).await;
         let _ = tx.send(UiEvent::Analysis(result)).await;
     });
 }

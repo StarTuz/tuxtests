@@ -9,19 +9,24 @@ pub async fn invoke_ollama(
     model: &str,
     system_prompt: &str,
     payload_json: &str,
+    emit_diagnostics: bool,
 ) -> Option<String> {
-    eprintln!(
-        "🔌 Dispatching payload natively to local Ollama Engine [{}] via {}...",
-        model, base_url
-    );
+    if emit_diagnostics {
+        eprintln!(
+            "🔌 Dispatching payload natively to local Ollama Engine [{}] via {}...",
+            model, base_url
+        );
+    }
 
     let ollama = match Ollama::try_new(base_url) {
         Ok(client) => client,
         Err(e) => {
-            eprintln!(
-                "❌ CRITICAL ERROR: Ollama URL '{}' is invalid: {}.",
-                base_url, e
-            );
+            if emit_diagnostics {
+                eprintln!(
+                    "❌ CRITICAL ERROR: Ollama URL '{}' is invalid: {}.",
+                    base_url, e
+                );
+            }
             return None;
         }
     };
@@ -38,7 +43,9 @@ pub async fn invoke_ollama(
     match ollama.generate(req).await {
         Ok(res) => Some(res.response),
         Err(e) => {
-            eprintln!("❌ CRITICAL ERROR: Ollama Offline Engine failed natively: {}. Ensure your active model '{}' is dynamically running correctly.", e, model);
+            if emit_diagnostics {
+                eprintln!("❌ CRITICAL ERROR: Ollama Offline Engine failed natively: {}. Ensure your active model '{}' is dynamically running correctly.", e, model);
+            }
             None
         }
     }

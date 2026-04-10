@@ -147,3 +147,7 @@ pub fn payload_json(payload: &models::TuxPayload) -> Result<String, serde_json::
 pub async fn analyze_payload(payload: &models::TuxPayload) -> Result<String, String> {
     ai::analyzer::get_analysis(payload).await
 }
+
+pub async fn analyze_payload_quiet(payload: &models::TuxPayload) -> Result<String, String> {
+    ai::analyzer::get_analysis_quiet(payload).await
+}

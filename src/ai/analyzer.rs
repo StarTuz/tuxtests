@@ -23,6 +23,17 @@ pub async fn run_analysis(payload: &TuxPayload) {
 }
 
 pub async fn get_analysis(payload: &TuxPayload) -> Result<String, String> {
+    get_analysis_with_mode(payload, true).await
+}
+
+pub async fn get_analysis_quiet(payload: &TuxPayload) -> Result<String, String> {
+    get_analysis_with_mode(payload, false).await
+}
+
+async fn get_analysis_with_mode(
+    payload: &TuxPayload,
+    emit_diagnostics: bool,
+) -> Result<String, String> {
     let config = config::AppConfig::load();
     let system_prompt = build_system_prompt(payload);
     let payload_str = serde_json::to_string(payload)
@@ -34,7 +45,7 @@ pub async fn get_analysis(payload: &TuxPayload) -> Result<String, String> {
             Err(err) => return Err(err),
         };
 
-    if payload.drives.is_empty() {
+    if emit_diagnostics && payload.drives.is_empty() {
         eprintln!(
             "⚠️ No drives were discovered in the current scan payload. AI analysis may be incomplete."
         );
@@ -43,14 +54,16 @@ pub async fn get_analysis(payload: &TuxPayload) -> Result<String, String> {
     let output = match &analysis_target {
         AnalysisTarget::Gemini => {
             let key = config::AppConfig::get_gemini_key().expect("Gemini key should exist");
-            gemini::invoke_gemini(&key, &system_prompt, &payload_str).await
+            gemini::invoke_gemini(&key, &system_prompt, &payload_str, emit_diagnostics).await
         }
         AnalysisTarget::Ollama { model, url } => {
-            eprintln!(
-                "ℹ️ Using Ollama provider with model '{}' at {}.",
-                model, url
-            );
-            ollama::invoke_ollama(url, model, &system_prompt, &payload_str).await
+            if emit_diagnostics {
+                eprintln!(
+                    "ℹ️ Using Ollama provider with model '{}' at {}.",
+                    model, url
+                );
+            }
+            ollama::invoke_ollama(url, model, &system_prompt, &payload_str, emit_diagnostics).await
         }
     };
 
