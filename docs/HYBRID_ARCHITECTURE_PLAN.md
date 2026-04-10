@@ -75,6 +75,37 @@ These are explicitly out of scope for the first hybrid pass:
 3. No replacement of validated collector logic without tests proving parity.
 4. Every new UI action must map to an existing backend capability or a deliberately added backend API.
 
+## Migration Rules
+
+These rules apply to every step of the hybrid migration:
+
+1. Move code by extraction or reuse before rewriting behavior.
+2. Keep hardware collection in Rust backend modules, not in UI adapters.
+3. Treat `TuxPayload` as the canonical shared contract until a deliberate schema migration is approved.
+4. Do not mark documentation, installer text, or versions as hybrid-ready until both UI layers build and consume real backend data.
+5. If a UI prototype needs mock data for layout work, keep that data in clearly labeled frontend-only fixtures and never mix it into production collection paths.
+
+## Anti-Patterns
+
+The following patterns are explicitly forbidden in hybrid work:
+
+- hardcoding PCIe BDFs, ASPM states, storage devices, or other machine facts in runtime code
+- creating a second backend tree that drifts from the validated collector/analyzer
+- updating README, installer scripts, or crate versions to advertise UI features before they build and run
+- replacing proven diagnostics with simplified placeholders "for now" without clear isolation
+- deleting or sidelining the CLI before the shared backend facade is in place
+
+## Implementation Checklist
+
+Before opening a hybrid UI PR, confirm all of the following:
+
+- the existing CLI behavior still passes `fmt`, `test`, `clippy`, and release build checks
+- the UI path calls into shared backend code rather than duplicating collector logic
+- no production code contains mock hardware values
+- machine-readable outputs still match [docs/UI_CONTRACT.md](/home/startux/Code/tuxtests/docs/UI_CONTRACT.md)
+- documentation describes only features that are actually present in the branch
+- any new UI-specific dependencies are scoped to the UI layer and do not change backend behavior by accident
+
 ## Suggested Build Order
 
 1. Extract backend facade from the current CLI implementation.
