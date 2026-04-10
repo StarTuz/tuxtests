@@ -13,6 +13,16 @@ enum AnalysisTarget {
 
 /// Main AI routing module handling data serialization.
 pub async fn run_analysis(payload: &TuxPayload) {
+    match get_analysis(payload).await {
+        Ok(markdown) => println!(
+            "\n============= AI BOTTLENECK ANALYSIS =============\n\n{}\n\n==================================================",
+            markdown
+        ),
+        Err(err) => eprintln!("{}", err),
+    }
+}
+
+pub async fn get_analysis(payload: &TuxPayload) -> Result<String, String> {
     let config = config::AppConfig::load();
     let system_prompt = build_system_prompt(payload);
     let payload_str = serde_json::to_string(payload)
@@ -21,10 +31,7 @@ pub async fn run_analysis(payload: &TuxPayload) {
     let analysis_target =
         match resolve_analysis_target(&config, config::AppConfig::get_gemini_key().is_some()) {
             Ok(target) => target,
-            Err(err) => {
-                eprintln!("{}", err);
-                return;
-            }
+            Err(err) => return Err(err),
         };
 
     if payload.drives.is_empty() {
@@ -48,11 +55,11 @@ pub async fn run_analysis(payload: &TuxPayload) {
     };
 
     match output {
-        Some(markdown) => println!("\n============= AI BOTTLENECK ANALYSIS =============\n\n{}\n\n==================================================", markdown),
-        None => eprintln!(
+        Some(markdown) => Ok(markdown),
+        None => Err(format!(
             "❌ Failed to route inference through the '{}' provider. Check provider-specific diagnostics above.",
             provider_name(&analysis_target)
-        ),
+        )),
     }
 }
 
