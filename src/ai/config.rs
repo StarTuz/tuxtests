@@ -1,6 +1,7 @@
 use keyring::Entry;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
+use std::env;
 use std::fs;
 use std::path::PathBuf;
 
@@ -16,16 +17,15 @@ pub struct AppConfig {
 
 impl AppConfig {
     fn config_path() -> Option<PathBuf> {
-        let proj_dirs = match directories::ProjectDirs::from("com", "startux", "tuxtests") {
-            Some(d) => d,
+        let dir = match preferred_config_dir() {
+            Some(dir) => dir,
             None => {
                 eprintln!("⚠️ CRITICAL Warning: `directories` crate failed to map $HOME or XDG native boundaries. Falling back to local state.");
                 return Some(PathBuf::from("tuxtests_config.toml"));
             }
         };
-        let dir = proj_dirs.config_dir();
         if !dir.exists() {
-            if let Err(e) = fs::create_dir_all(dir) {
+            if let Err(e) = fs::create_dir_all(&dir) {
                 eprintln!("⚠️ Warning: System /home partition restricted ({}). Falling back to local tuxtests_config.toml mapping.", e);
                 return Some(PathBuf::from("tuxtests_config.toml"));
             }
@@ -156,11 +156,58 @@ fn default_ollama_url() -> String {
     "http://127.0.0.1:11434".to_string()
 }
 
+fn preferred_config_dir() -> Option<PathBuf> {
+    if let Some(dir) = sudo_invoking_user_config_dir() {
+        return Some(dir);
+    }
+
+    directories::ProjectDirs::from("com", "startux", "tuxtests")
+        .map(|dirs| dirs.config_dir().to_path_buf())
+}
+
+fn sudo_invoking_user_config_dir() -> Option<PathBuf> {
+    let sudo_user = sudo_invoking_user()?;
+    let user_home = lookup_home_dir(&sudo_user)?;
+    Some(user_home.join(".config").join("tuxtests"))
+}
+
+pub fn sudo_invoking_user() -> Option<String> {
+    let current_home = env::var_os("HOME")?;
+    if current_home != "/root" {
+        return None;
+    }
+
+    env::var("SUDO_USER").ok().filter(|user| !user.is_empty())
+}
+
+fn lookup_home_dir(username: &str) -> Option<PathBuf> {
+    let passwd = fs::read_to_string("/etc/passwd").ok()?;
+    parse_home_dir_from_passwd(&passwd, username).map(PathBuf::from)
+}
+
+fn parse_home_dir_from_passwd<'a>(passwd: &'a str, username: &str) -> Option<&'a str> {
+    passwd.lines().find_map(|line| {
+        let mut fields = line.split(':');
+        let name = fields.next()?;
+        let _password = fields.next()?;
+        let _uid = fields.next()?;
+        let _gid = fields.next()?;
+        let _gecos = fields.next()?;
+        let home = fields.next()?;
+        if name == username {
+            Some(home)
+        } else {
+            None
+        }
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         config_from_toml, config_to_toml, default_ollama_model, default_ollama_url,
-        normalize_ollama_model, normalize_ollama_url, normalize_provider, AppConfig,
+        normalize_ollama_model, normalize_ollama_url, normalize_provider,
+        parse_home_dir_from_passwd, AppConfig,
     };
 
     #[test]
@@ -235,5 +282,19 @@ ollama_model = "mistral"
         assert_eq!(restored.provider, "gemini");
         assert_eq!(restored.ollama_model, "mistral");
         assert_eq!(restored.ollama_url, default_ollama_url());
+    }
+
+    #[test]
+    fn parses_home_dir_from_passwd_contents() {
+        let passwd = "\
+root:x:0:0:root:/root:/bin/bash
+startux:x:1000:1000:Startux:/home/startux:/bin/bash
+";
+
+        assert_eq!(
+            parse_home_dir_from_passwd(passwd, "startux"),
+            Some("/home/startux")
+        );
+        assert_eq!(parse_home_dir_from_passwd(passwd, "missing"), None);
     }
 }

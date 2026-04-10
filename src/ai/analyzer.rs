@@ -179,6 +179,10 @@ fn resolve_analysis_target(
         "gemini" => {
             if gemini_key_available {
                 Ok(AnalysisTarget::Gemini)
+            } else if let Some(user) = config::sudo_invoking_user() {
+                Err(format!(
+                    "❌ Gemini API key is not available to the sudo/root session. TuxTests is using {user}'s config, but root cannot normally read {user}'s desktop keyring entry. Run Gemini analysis without sudo, switch the sudo workflow to Ollama, or deliberately set a separate root key with `sudo tuxtests --set-gemini-key \"YOUR_KEY_HERE\"` if you accept that separation."
+                ))
             } else {
                 Err("❌ Gemini API key is missing from the system keyring. Run `tuxtests --set-gemini-key \"YOUR_KEY_HERE\"` first.".to_string())
             }

@@ -43,6 +43,8 @@ TuxTests is built with a "Privacy First" and "Least Privilege" philosophy.
 
 API keys are never stored in plain text or environment variables. TuxTests uses the `keyring` crate to interface with your desktop's native secret manager. If a key is missing, the tool will provide a clear error message rather than attempting an unauthenticated request.
 
+When running TuxTests through `sudo`, the tool can reuse the invoking user's config file, but the Gemini secret still lives in that user's desktop keyring. Root normally cannot read that keyring entry. For Gemini analysis, prefer running without `sudo`; for privileged scans, prefer `--full-bench`/Polkit or use Ollama for sudo-launched workflows. If you intentionally want a separate root Gemini key, set it explicitly with `sudo tuxtests --set-gemini-key "YOUR_KEY_HERE"`.
+
 ### Polkit Elevation
 
 Privileged actions like reading S.M.A.R.T. data (`smartctl`) are handled via `pkexec`.

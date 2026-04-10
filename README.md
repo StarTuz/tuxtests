@@ -30,6 +30,8 @@ The current committed Rust CLI/backend is the source of truth. Future Ratatui an
 - **Security**: `keyring` (Secure API key storage), `Polkit` (Privilege elevation)
 - **Networking**: `reqwest` (Async HTTP with 60s safeguards)
 
+Gemini keys are stored in the current desktop user's native keyring. A sudo-launched TuxTests session can reuse the invoking user's config file, but root normally cannot read that user's keyring secret. Prefer non-sudo Gemini analysis, Polkit-backed `--full-bench`, or Ollama for sudo-launched workflows.
+
 ## ⌨️ Usage
 
 TuxTests is currently in a functional MVP state. For detailed flag documentation, see [CLI.md](CLI.md).
