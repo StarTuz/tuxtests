@@ -1,9 +1,9 @@
 #!/bin/bash
-# TuxTests v0.8.0 Installer Script
+# TuxTests v0.8.1 Installer Script
 
 set -e
 
-echo "🚀 Initializing TuxTests v0.8.0 Build Pipeline..."
+echo "🚀 Initializing TuxTests v0.8.1 Build Pipeline..."
 
 # Verify cargo dependency
 if ! command -v cargo &> /dev/null; then
@@ -24,7 +24,7 @@ echo "⚡ Deploying executable natively..."
 cp target/release/tuxtests "$INSTALL_DIR/tuxtests"
 chmod +x "$INSTALL_DIR/tuxtests"
 
-echo "✅ TuxTests v0.8.0 Successfully Deployed!"
+echo "✅ TuxTests v0.8.1 Successfully Deployed!"
 echo ""
 echo "Note: Ensure that '$INSTALL_DIR' evaluates inside your active \$PATH!"
 echo ""

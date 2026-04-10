@@ -105,32 +105,21 @@ enum ProbeOutcome {
 
 fn read_lspci_link_details(bdf: &str, privileged: bool) -> ProbeOutcome {
     if privileged {
-        for (source, program, args) in [
-            ("pkexec_lspci", "pkexec", vec!["lspci", "-vv", "-s", bdf]),
-            ("sudo_lspci", "sudo", vec!["-n", "lspci", "-vv", "-s", bdf]),
-        ] {
-            match run_lspci_command(program, &args) {
-                Ok(stdout) => {
-                    return parse_link_details(&stdout, source).map_or_else(
-                        || {
-                            ProbeOutcome::Failed(format!(
-                                "{} returned output without PCIe link details for {}",
-                                source, bdf
-                            ))
-                        },
-                        ProbeOutcome::Success,
-                    );
-                }
-                Err(_) => continue,
-            }
+        match run_lspci_command("sudo", &["-n", "lspci", "-vv", "-s", bdf]) {
+            Ok(stdout) => parse_link_details(&stdout, "sudo_lspci").map_or_else(
+                || {
+                    ProbeOutcome::Failed(format!(
+                        "sudo lspci returned output without PCIe link details for {}",
+                        bdf
+                    ))
+                },
+                ProbeOutcome::Success,
+            ),
+            Err(sudo_error) => ProbeOutcome::Failed(format!(
+                "elevated PCIe inspection was unavailable for {} ({}). Re-run `sudo lspci -vv -s {}` or run TuxTests under sudo for fuller PCIe/ASPM results.",
+                bdf, sudo_error, bdf
+            )),
         }
-
-        let pkexec_error = format_probe_failure("pkexec", &["lspci", "-vv", "-s", bdf]);
-        let sudo_error = format_probe_failure("sudo", &["-n", "lspci", "-vv", "-s", bdf]);
-        ProbeOutcome::Failed(format!(
-            "privileged PCIe inspection failed for {} ({}; {})",
-            bdf, pkexec_error, sudo_error
-        ))
     } else {
         match run_lspci_command("lspci", &["-vv", "-s", bdf]) {
             Ok(stdout) => parse_link_details(&stdout, "lspci").map_or_else(
@@ -154,13 +143,6 @@ fn run_lspci_command(program: &str, args: &[&str]) -> Result<String, String> {
         }
         Ok(output) => Err(command_error_message(program, output)),
         Err(err) => Err(format!("{} could not be executed ({})", program, err)),
-    }
-}
-
-fn format_probe_failure(program: &str, args: &[&str]) -> String {
-    match run_lspci_command(program, args) {
-        Ok(_) => format!("{} unexpectedly succeeded", program),
-        Err(err) => err,
     }
 }
 
