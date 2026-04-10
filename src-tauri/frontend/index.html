@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TuxTests</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="module" src="./main.js"></script>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">TuxTests GUI</p>
+          <h1>Linux hardware intelligence</h1>
+          <p id="status" class="status">Starting graphical shell...</p>
+        </div>
+        <div class="actions">
+          <button id="refresh">Refresh</button>
+          <button id="analyze">Analyze</button>
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="card system-card">
+          <h2>System</h2>
+          <dl id="system"></dl>
+        </article>
+
+        <article class="card drives-card">
+          <div class="card-heading">
+            <h2>Drives</h2>
+            <span id="drive-count">0 drives</span>
+          </div>
+          <div id="drives" class="drive-list"></div>
+        </article>
+
+        <article class="card detail-card">
+          <h2>Selected Drive</h2>
+          <div id="drive-details" class="details">Select a drive to inspect its backend payload.</div>
+        </article>
+
+        <article class="card diagnostics-card">
+          <h2>Diagnostics</h2>
+          <pre id="diagnostics">No diagnostics yet.</pre>
+        </article>
+
+        <article class="card analysis-card">
+          <h2>AI Analysis</h2>
+          <pre id="analysis">Run analysis after a payload refresh.</pre>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

@@ -2,7 +2,7 @@
 
 TuxTests is a high-performance, memory-safe Linux hardware diagnostic and suggestion tool built in Rust. It utilizes modern AI (Gemini/Ollama) to identify system bottlenecks and provide actionable upgrade advice.
 
-The current committed Rust CLI/backend is the source of truth. Future Ratatui and Tauri interfaces should be layered on top of this backend contract rather than replacing or re-implementing hardware collection logic.
+The current committed Rust CLI/backend is the source of truth. Ratatui and Tauri interfaces are layered on top of this backend contract rather than replacing or re-implementing hardware collection logic.
 
 ## 🚀 Features
 
@@ -17,6 +17,8 @@ The current committed Rust CLI/backend is the source of truth. Future Ratatui an
 
 - **Language**: Rust
 - **CLI**: `clap`
+- **Terminal UI**: `ratatui`
+- **Graphical UI**: `tauri` static frontend shell over the Rust backend
 - **Async Runtime**: `tokio`
 - **Hardware APIs**: `libudev`, `sysinfo`, `lsblk`
 - **Serialization**: `serde`, `serde_json`
@@ -69,12 +71,25 @@ tuxtests --print-config
 - Includes backend-driven config editing with `c`.
 - Supports scroll focus cycling with `tab` and panel scrolling with `PgUp` / `PgDn`.
 
+### Tauri GUI
+
+The first Tauri slice lives in `src-tauri/` and intentionally stays thin:
+
+- `get_config` calls the shared Rust config facade.
+- `get_payload` calls the shared Rust hardware payload collector.
+- `analyze_payload` calls the quiet shared AI analysis path.
+- The frontend only renders system, drive, diagnostic, and analysis data returned by the backend.
+
+This GUI shell is an early hybrid milestone, not a replacement for the CLI/TUI.
+
 ## 🏗 Project Structure
 
 - `src/hardware/`: Logic for system, storage, and connection discovery.
 - `src/models.rs`: Core Rust data structures (`TuxPayload`, `DriveInfo`) shared across discovery and AI modules.
 - `src/bench/`: Benchmarking and drive health logic.
 - `src/ai/`: LLM integration, configuration management, and the RAG log-scraping engine.
+- `src/ui/`: Ratatui terminal dashboard.
+- `src-tauri/`: Tauri graphical shell that invokes the shared Rust backend.
 - `tests/fixtures/`: Mocked hardware scenarios for regression testing.
 
 ## 🧪 Testing & CI/CD
