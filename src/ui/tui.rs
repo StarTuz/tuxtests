@@ -9,7 +9,7 @@ use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Cell, Paragraph, Row, Table, Wrap};
+use ratatui::widgets::{Block, Borders, Cell, Paragraph, Row, Table, TableState, Wrap};
 use ratatui::Terminal;
 use std::error::Error;
 use std::io;
@@ -23,28 +23,35 @@ enum UiEvent {
 }
 
 struct App {
+    config: crate::ai::config::AppConfig,
     payload: Option<TuxPayload>,
     analysis: Option<String>,
     status: String,
     diagnostics: Vec<String>,
     is_loading: bool,
     is_analyzing: bool,
+    full_bench_enabled: bool,
+    selected_drive: usize,
     last_refresh: Option<Instant>,
 }
 
 impl App {
     fn new() -> Self {
         Self {
+            config: engine::load_config(),
             payload: None,
             analysis: None,
             status: "Starting TuxTests terminal dashboard...".to_string(),
             diagnostics: vec![
-                "Keys: [r] refresh  [a] analyze  [q] quit".to_string(),
+                "Keys: [r] refresh  [b] full-bench refresh  [a] analyze  [j/k] select drive  [q] quit"
+                    .to_string(),
                 "The dashboard renders the shared backend payload; no UI-side hardware logic is used."
                     .to_string(),
             ],
             is_loading: true,
             is_analyzing: false,
+            full_bench_enabled: false,
+            selected_drive: 0,
             last_refresh: None,
         }
     }
@@ -55,6 +62,9 @@ impl App {
             payload.drives.len()
         );
         self.last_refresh = Some(Instant::now());
+        if self.selected_drive >= payload.drives.len() {
+            self.selected_drive = payload.drives.len().saturating_sub(1);
+        }
         self.payload = Some(payload);
         self.is_loading = false;
     }
@@ -72,6 +82,32 @@ impl App {
             }
         }
     }
+
+    fn selected_drive(&self) -> Option<&crate::models::DriveInfo> {
+        self.payload
+            .as_ref()
+            .and_then(|payload| payload.drives.get(self.selected_drive))
+    }
+
+    fn select_next(&mut self) {
+        if let Some(payload) = &self.payload {
+            if !payload.drives.is_empty() {
+                self.selected_drive = (self.selected_drive + 1) % payload.drives.len();
+            }
+        }
+    }
+
+    fn select_previous(&mut self) {
+        if let Some(payload) = &self.payload {
+            if !payload.drives.is_empty() {
+                self.selected_drive = if self.selected_drive == 0 {
+                    payload.drives.len() - 1
+                } else {
+                    self.selected_drive - 1
+                };
+            }
+        }
+    }
 }
 
 pub async fn run() -> Result<(), Box<dyn Error>> {
@@ -84,7 +120,7 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
     let (tx, mut rx) = mpsc::channel::<UiEvent>(4);
     let mut app = App::new();
 
-    spawn_refresh(tx.clone());
+    spawn_refresh(tx.clone(), false);
 
     let result = run_loop(&mut terminal, &mut app, tx, &mut rx).await;
 
@@ -117,9 +153,19 @@ async fn run_loop(
                     KeyCode::Char('q') => return Ok(()),
                     KeyCode::Char('r') => {
                         if !app.is_loading {
+                            app.full_bench_enabled = false;
                             app.status = "Refreshing hardware payload...".to_string();
                             app.is_loading = true;
-                            spawn_refresh(tx.clone());
+                            spawn_refresh(tx.clone(), false);
+                        }
+                    }
+                    KeyCode::Char('b') => {
+                        if !app.is_loading {
+                            app.full_bench_enabled = true;
+                            app.status = "Refreshing hardware payload with SMART and benchmarks..."
+                                .to_string();
+                            app.is_loading = true;
+                            spawn_refresh(tx.clone(), true);
                         }
                     }
                     KeyCode::Char('a') => {
@@ -136,6 +182,8 @@ async fn run_loop(
                             }
                         }
                     }
+                    KeyCode::Down | KeyCode::Char('j') => app.select_next(),
+                    KeyCode::Up | KeyCode::Char('k') => app.select_previous(),
                     _ => {}
                 }
             }
@@ -143,20 +191,21 @@ async fn run_loop(
     }
 }
 
-fn spawn_refresh(tx: mpsc::Sender<UiEvent>) {
+fn spawn_refresh(tx: mpsc::Sender<UiEvent>, full_bench: bool) {
     tokio::spawn(async move {
-        let payload = match tokio::task::spawn_blocking(|| engine::collect_payload(false)).await {
-            Ok(payload) => payload,
-            Err(err) => {
-                let _ = tx
-                    .send(UiEvent::Analysis(Err(format!(
-                        "Payload refresh task failed: {}",
-                        err
-                    ))))
-                    .await;
-                return;
-            }
-        };
+        let payload =
+            match tokio::task::spawn_blocking(move || engine::collect_payload(full_bench)).await {
+                Ok(payload) => payload,
+                Err(err) => {
+                    let _ = tx
+                        .send(UiEvent::Analysis(Err(format!(
+                            "Payload refresh task failed: {}",
+                            err
+                        ))))
+                        .await;
+                    return;
+                }
+            };
         let _ = tx.send(UiEvent::Payload(Box::new(payload))).await;
     });
 }
@@ -174,8 +223,8 @@ fn render(frame: &mut ratatui::Frame, app: &App) {
         .constraints([
             Constraint::Length(3),
             Constraint::Length(8),
-            Constraint::Min(10),
-            Constraint::Length(6),
+            Constraint::Min(14),
+            Constraint::Length(10),
         ])
         .split(frame.size());
 
@@ -191,18 +240,34 @@ fn render(frame: &mut ratatui::Frame, app: &App) {
         })
         .unwrap_or_else(|| "TuxTests TUI | loading...".to_string());
 
-    let header = Paragraph::new(app.status.clone())
-        .block(Block::default().borders(Borders::ALL).title(header_title))
-        .style(
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
-        );
+    let bench_mode = if app.full_bench_enabled {
+        "full-bench"
+    } else {
+        "scan"
+    };
+    let refresh_text = app
+        .last_refresh
+        .map(|instant| format!("refreshed {}s ago", instant.elapsed().as_secs()))
+        .unwrap_or_else(|| "not refreshed yet".to_string());
+
+    let header = Paragraph::new(vec![
+        Line::from(app.status.clone()),
+        Line::from(format!(
+            "provider={} model={} mode={} {}",
+            app.config.provider, app.config.ollama_model, bench_mode, refresh_text
+        )),
+    ])
+    .block(Block::default().borders(Borders::ALL).title(header_title))
+    .style(
+        Style::default()
+            .fg(Color::Cyan)
+            .add_modifier(Modifier::BOLD),
+    );
     frame.render_widget(header, chunks[0]);
 
     render_summary(frame, app, chunks[1]);
-    render_drives(frame, app, chunks[2]);
-    render_analysis(frame, app, chunks[3]);
+    render_middle(frame, app, chunks[2]);
+    render_bottom(frame, app, chunks[3]);
 }
 
 fn render_summary(frame: &mut ratatui::Frame, app: &App, area: ratatui::layout::Rect) {
@@ -257,6 +322,16 @@ fn render_summary(frame: &mut ratatui::Frame, app: &App, area: ratatui::layout::
     frame.render_widget(summary, area);
 }
 
+fn render_middle(frame: &mut ratatui::Frame, app: &App, area: ratatui::layout::Rect) {
+    let columns = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(56), Constraint::Percentage(44)])
+        .split(area);
+
+    render_drives(frame, app, columns[0]);
+    render_drive_details(frame, app, columns[1]);
+}
+
 fn render_drives(frame: &mut ratatui::Frame, app: &App, area: ratatui::layout::Rect) {
     let rows: Vec<Row> = app
         .payload
@@ -297,9 +372,100 @@ fn render_drives(frame: &mut ratatui::Frame, app: &App, area: ratatui::layout::R
                 .add_modifier(Modifier::BOLD),
         ),
     )
-    .block(Block::default().borders(Borders::ALL).title("Drives"));
+    .highlight_style(Style::default().bg(Color::DarkGray))
+    .block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title("Drives [j/k to select]"),
+    );
 
-    frame.render_widget(table, area);
+    let mut state = TableState::default();
+    if app.payload.as_ref().is_some_and(|p| !p.drives.is_empty()) {
+        state.select(Some(app.selected_drive));
+    }
+    frame.render_stateful_widget(table, area, &mut state);
+}
+
+fn render_drive_details(frame: &mut ratatui::Frame, app: &App, area: ratatui::layout::Rect) {
+    let lines = if let Some(drive) = app.selected_drive() {
+        let mut lines = vec![
+            Line::from(vec![
+                Span::styled("Name: ", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(drive.name.clone()),
+            ]),
+            Line::from(vec![
+                Span::styled("Type: ", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(drive.drive_type.clone()),
+            ]),
+            Line::from(vec![
+                Span::styled(
+                    "Connection: ",
+                    Style::default().add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(drive.connection.clone()),
+            ]),
+            Line::from(vec![
+                Span::styled("Path: ", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(drive.physical_path.clone()),
+            ]),
+            Line::from(vec![
+                Span::styled("Mounts: ", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(if drive.active_mountpoints.is_empty() {
+                    "none".to_string()
+                } else {
+                    drive.active_mountpoints.join(", ")
+                }),
+            ]),
+        ];
+
+        if let Some(serial) = &drive.serial {
+            lines.push(Line::from(vec![
+                Span::styled("Serial: ", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(serial.clone()),
+            ]));
+        }
+
+        if !drive.pcie_path.is_empty() {
+            lines.push(Line::from(""));
+            lines.push(Line::from(Span::styled(
+                "PCIe Path",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            )));
+            for path in drive.pcie_path.iter().take(3) {
+                lines.push(Line::from(format!(
+                    "- {} {} {}",
+                    path.bdf,
+                    path.current_link_speed.as_deref().unwrap_or("?"),
+                    path.aspm.as_deref().unwrap_or("ASPM unknown")
+                )));
+            }
+        }
+
+        lines
+    } else {
+        vec![Line::from("No drive selected yet.")]
+    };
+
+    let panel = Paragraph::new(lines)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Drive Details"),
+        )
+        .wrap(Wrap { trim: true });
+    frame.render_widget(panel, area);
+}
+
+fn render_bottom(frame: &mut ratatui::Frame, app: &App, area: ratatui::layout::Rect) {
+    let columns = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
+        .split(area);
+
+    render_analysis(frame, app, columns[0]);
+    render_diagnostics(frame, app, columns[1]);
 }
 
 fn render_analysis(frame: &mut ratatui::Frame, app: &App, area: ratatui::layout::Rect) {
@@ -308,25 +474,45 @@ fn render_analysis(frame: &mut ratatui::Frame, app: &App, area: ratatui::layout:
     } else if let Some(analysis) = &app.analysis {
         analysis
     } else {
-        "No analysis yet. Press [a] to analyze or [r] to refresh."
+        "No analysis yet. Press [a] to analyze."
     };
 
-    let mut lines = vec![Line::from(analysis_text.to_string())];
-    if !app.diagnostics.is_empty() {
-        lines.push(Line::from(""));
-        lines.push(Line::from(Span::styled(
-            "Diagnostics",
-            Style::default()
-                .fg(Color::Magenta)
-                .add_modifier(Modifier::BOLD),
-        )));
-        for entry in app.diagnostics.iter().rev().take(3).rev() {
-            lines.push(Line::from(format!("- {}", entry)));
+    let panel = Paragraph::new(vec![Line::from(analysis_text.to_string())])
+        .block(Block::default().borders(Borders::ALL).title("Analysis"))
+        .wrap(Wrap { trim: true });
+    frame.render_widget(panel, area);
+}
+
+fn render_diagnostics(frame: &mut ratatui::Frame, app: &App, area: ratatui::layout::Rect) {
+    let mut lines = Vec::new();
+
+    for entry in app.diagnostics.iter().rev().take(3).rev() {
+        lines.push(Line::from(format!("- {}", entry)));
+    }
+
+    if let Some(payload) = &app.payload {
+        if !payload.kernel_anomalies.is_empty() {
+            if !lines.is_empty() {
+                lines.push(Line::from(""));
+            }
+            lines.push(Line::from(Span::styled(
+                "Kernel Anomalies",
+                Style::default()
+                    .fg(Color::Magenta)
+                    .add_modifier(Modifier::BOLD),
+            )));
+            for anomaly in payload.kernel_anomalies.iter().take(3) {
+                lines.push(Line::from(format!("- {}", anomaly)));
+            }
         }
     }
 
+    if lines.is_empty() {
+        lines.push(Line::from("No diagnostics yet."));
+    }
+
     let panel = Paragraph::new(lines)
-        .block(Block::default().borders(Borders::ALL).title("Analysis"))
+        .block(Block::default().borders(Borders::ALL).title("Diagnostics"))
         .wrap(Wrap { trim: true });
     frame.render_widget(panel, area);
 }
