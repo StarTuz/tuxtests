@@ -84,6 +84,19 @@ The first Tauri slice lives in `src-tauri/` and intentionally stays thin:
 
 This GUI shell is an early hybrid milestone, not a replacement for the CLI/TUI.
 
+Developer commands:
+
+```bash
+# Verify the Tauri Rust command layer
+npm run tauri:check
+
+# Launch the graphical shell during development
+npm run tauri:dev
+
+# Fallback for Wayland/WebKitGTK/NVIDIA protocol issues
+npm run tauri:dev:x11
+```
+
 ## 🏗 Project Structure
 
 - `src/hardware/`: Logic for system, storage, and connection discovery.

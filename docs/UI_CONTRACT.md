@@ -54,6 +54,17 @@ Behavior:
 - CLI behavior: [src/main.rs](/home/startux/Code/tuxtests/src/main.rs)
 - AI payload example: [GEMINI.md](/home/startux/Code/tuxtests/GEMINI.md)
 
+## In-Process UI Facade
+
+Ratatui and Tauri should prefer the shared Rust facade in [src/engine.rs](/home/startux/Code/tuxtests/src/engine.rs) rather than shelling out to the CLI:
+
+- `load_config()` / `config_json()`
+- `apply_config_update(...)`
+- `collect_payload(full_bench)`
+- `analyze_payload(...)` or `analyze_payload_quiet(...)`
+
+The Tauri command layer in [src-tauri/src/commands.rs](/home/startux/Code/tuxtests/src-tauri/src/commands.rs) is intentionally thin and should remain a pass-through over that facade.
+
 ## Notes
 
 - The AI analysis path remains human-oriented and returns Markdown.
