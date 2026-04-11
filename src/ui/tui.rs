@@ -646,7 +646,8 @@ fn render_drive_details(frame: &mut ratatui::Frame, app: &App, area: Rect) {
                     .add_modifier(Modifier::BOLD),
             )));
             lines.push(Line::from(format!(
-                "- available={} passed={}",
+                "- status={:?} available={} passed={}",
+                smart.status,
                 smart.available,
                 smart
                     .passed

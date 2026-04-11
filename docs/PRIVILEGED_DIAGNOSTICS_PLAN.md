@@ -57,12 +57,20 @@ Status: implemented.
 
 ## Phase 7: SMART Parser Coverage
 
-Status: started.
+Status: implemented.
 
 - Parse common ATA SMART attributes by ID as well as by canonical attribute name.
 - Parse ATA raw string values when raw numeric values are not present.
 - Use ATA SMART attributes as fallbacks for temperature, power-on hours, and power-cycle counts.
 - Map SCSI grown defect counts into the existing degradation counter field.
+
+## Phase 8: SMART Probe Status
+
+Status: started.
+
+- Add a structured SMART probe status to distinguish available, not-applicable, access-denied, missing-tool, execution-failed, and parse-failed states.
+- Use the structured status for backend finding classification instead of inferring from limitation text.
+- Surface the probe status in TUI and Tauri SMART detail views.
 
 ## Remaining Work
 

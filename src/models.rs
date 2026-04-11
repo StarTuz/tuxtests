@@ -99,8 +99,23 @@ pub enum SmartTransport {
     Unknown,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum SmartProbeStatus {
+    Available,
+    NotApplicable,
+    AccessDenied,
+    ToolMissing,
+    ExecutionFailed,
+    ParseFailed,
+    #[default]
+    Unknown,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct SmartReport {
+    #[serde(default)]
+    pub status: SmartProbeStatus,
     pub available: bool,
     pub passed: Option<bool>,
     pub transport: SmartTransport,

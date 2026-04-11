@@ -161,10 +161,7 @@ fn build_findings(
         for drive in drives {
             if let Some(report) = &drive.smart {
                 if !report.available {
-                    let not_applicable = report
-                        .limitations
-                        .iter()
-                        .any(|limitation| limitation.contains("SMART not applicable"));
+                    let not_applicable = report.status == models::SmartProbeStatus::NotApplicable;
                     findings.push(models::DiagnosticFinding {
                         category: if not_applicable {
                             models::FindingCategory::Smart
@@ -179,7 +176,10 @@ fn build_findings(
                         title: if not_applicable {
                             format!("SMART skipped for {}", drive.name)
                         } else {
-                            format!("SMART data unavailable for {}", drive.name)
+                            format!(
+                                "SMART data unavailable for {} ({:?})",
+                                drive.name, report.status
+                            )
                         },
                         evidence: report.limitations.join("; "),
                         explanation: if not_applicable {
@@ -472,6 +472,7 @@ mod tests {
         let drive = test_drive("nvme0n1", "/sys/devices/pci0000:00/0000:00:1b.4/nvme/nvme0");
         let report = models::SmartReport {
             available: true,
+            status: models::SmartProbeStatus::Available,
             passed: Some(true),
             transport: models::SmartTransport::Nvme,
             model: Some("Mock NVMe".to_string()),

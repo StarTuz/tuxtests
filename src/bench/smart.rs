@@ -1,4 +1,4 @@
-use crate::models::{SmartReport, SmartTransport};
+use crate::models::{SmartProbeStatus, SmartReport, SmartTransport};
 use serde_json::Value;
 use std::fs;
 use std::process::Command;
@@ -34,6 +34,7 @@ pub fn check_health(device_node: &str) -> SmartOutcome {
             if smartmontools_missing(&stdout, &stderr) {
                 return unavailable_outcome(
                     Some(code),
+                    SmartProbeStatus::ToolMissing,
                     format!("anomaly: smartmontools missing or execution failed on {device_node}"),
                 );
             }
@@ -41,6 +42,7 @@ pub fn check_health(device_node: &str) -> SmartOutcome {
             if access_denied(&stderr) {
                 return unavailable_outcome(
                     Some(code),
+                    SmartProbeStatus::AccessDenied,
                     access_denied_anomaly(device_node, use_direct_smartctl),
                 );
             }
@@ -79,6 +81,7 @@ pub fn check_health(device_node: &str) -> SmartOutcome {
                         exit_code: Some(code),
                         report: Some(unavailable_report(
                             Some(code),
+                            SmartProbeStatus::ParseFailed,
                             descriptions,
                             vec![err.to_string()],
                         )),
@@ -87,7 +90,11 @@ pub fn check_health(device_node: &str) -> SmartOutcome {
                 }
             }
         }
-        Err(err) => unavailable_outcome(None, execution_failed_anomaly(use_direct_smartctl, err)),
+        Err(err) => unavailable_outcome(
+            None,
+            SmartProbeStatus::ExecutionFailed,
+            execution_failed_anomaly(use_direct_smartctl, err),
+        ),
     }
 }
 
@@ -97,6 +104,7 @@ pub fn skipped(reason: impl Into<String>) -> SmartOutcome {
         exit_code: None,
         report: Some(unavailable_report(
             None,
+            SmartProbeStatus::NotApplicable,
             Vec::new(),
             vec![format!("SMART not applicable: {}", reason.into())],
         )),
@@ -104,12 +112,17 @@ pub fn skipped(reason: impl Into<String>) -> SmartOutcome {
     }
 }
 
-fn unavailable_outcome(exit_code: Option<i32>, anomaly: String) -> SmartOutcome {
+fn unavailable_outcome(
+    exit_code: Option<i32>,
+    status: SmartProbeStatus,
+    anomaly: String,
+) -> SmartOutcome {
     SmartOutcome {
         health_ok: false,
         exit_code,
         report: Some(unavailable_report(
             exit_code,
+            status,
             exit_code.map(describe_exit_status).unwrap_or_default(),
             vec![anomaly.clone()],
         )),
@@ -119,10 +132,12 @@ fn unavailable_outcome(exit_code: Option<i32>, anomaly: String) -> SmartOutcome 
 
 fn unavailable_report(
     exit_code: Option<i32>,
+    status: SmartProbeStatus,
     exit_status_description: Vec<String>,
     limitations: Vec<String>,
 ) -> SmartReport {
     SmartReport {
+        status,
         available: false,
         passed: None,
         transport: SmartTransport::Unknown,
@@ -154,6 +169,7 @@ fn parse_smart_json(
     let nvme_log = json.get("nvme_smart_health_information_log");
 
     Ok(SmartReport {
+        status: SmartProbeStatus::Available,
         available: true,
         passed: json
             .pointer("/smart_status/passed")

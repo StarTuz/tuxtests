@@ -301,6 +301,7 @@ function renderSmartDetails(smart) {
   }
 
   const rows = [
+    ["Status", smart.status ?? "unknown"],
     ["Available", smart.available ? "yes" : "no"],
     ["Passed", smart.passed === null || smart.passed === undefined ? "unknown" : smart.passed ? "yes" : "no"],
     ["Transport", smart.transport ?? "unknown"],
