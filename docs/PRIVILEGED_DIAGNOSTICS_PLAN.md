@@ -20,11 +20,19 @@ Status: started.
 - Extract first-pass SMART counters for ATA and NVMe drives, including reallocated sectors, pending sectors, offline uncorrectable sectors, NVMe media errors, NVMe error-log entries, unsafe shutdowns, power-on hours, percentage used, and temperature.
 - Treat SMART findings as evidence-backed leads. Avoid claiming root cause without trend history or corroborating kernel/device evidence.
 
+## Phase 3: UI Surfacing
+
+Status: started.
+
+- Render backend-derived findings in the TUI diagnostics panel before raw kernel anomalies.
+- Render selected-drive SMART details in the TUI drive details panel.
+- Render backend-derived findings in the Tauri diagnostics card before raw kernel anomalies.
+- Render selected-drive SMART details in the Tauri selected-drive card.
+
 ## Remaining Work
 
 - Add richer SMART attribute coverage for USB bridge and SCSI/SAT edge cases.
 - Add a privilege strategy that avoids repeated polkit prompt spam, likely by documenting sudo mode first and then adding an explicit elevated helper path.
-- Add UI rendering for structured SMART reports and findings instead of relying on raw anomaly text.
 - Add fixture-based regression tests for real-world smartctl JSON from NVMe, SATA HDD, SATA SSD, USB bridge, and access-denied outputs.
 - Add trend/history support later so warnings can distinguish static old counters from actively worsening drives.
 

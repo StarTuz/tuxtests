@@ -67,11 +67,13 @@ function renderSummary() {
   const anomalyCount = state.payload.kernel_anomalies?.length ?? 0;
   const uniqueAnomalyCount = groupCounts(state.payload.kernel_anomalies ?? []).length;
   const benchmarkCount = Object.keys(state.payload.benchmarks ?? {}).length;
+  const findingCount = state.payload.findings?.length ?? 0;
 
   el.summary.innerHTML = `
     <span>${drives.length} drives</span>
     <span>${usbCount} USB</span>
     <span>${warningCount} warnings</span>
+    <span>${findingCount} findings</span>
     <span>${uniqueAnomalyCount}/${anomalyCount} anomaly types</span>
     <span>${benchmarkCount} benchmarks</span>
   `;
@@ -141,6 +143,7 @@ function renderDetails() {
         .join("\n")
     : "No PCIe path in payload.";
   const benchmark = benchmarkForDrive(drive.name);
+  const smart = renderSmartDetails(drive.smart);
 
   el.details.innerHTML = `
     <dl>
@@ -152,6 +155,8 @@ function renderDetails() {
       <dt>Serial</dt><dd>${escapeHtml(drive.serial ?? "unknown")}</dd>
       <dt>Benchmark</dt><dd>${escapeHtml(benchmark)}</dd>
     </dl>
+    <h3>SMART</h3>
+    ${smart}
     <h3>Topology</h3>
     <pre>${escapeHtml(topology)}</pre>
     <h3>PCIe Path</h3>
@@ -161,21 +166,42 @@ function renderDetails() {
 
 function renderDiagnostics() {
   const anomalies = state.payload?.kernel_anomalies ?? [];
-  if (!anomalies.length) {
-    el.diagnostics.innerHTML = "<p>No kernel anomalies in payload.</p>";
+  const findings = state.payload?.findings ?? [];
+  const sections = [];
+
+  if (findings.length) {
+    sections.push(
+      `<div class="diagnostic-section">
+        <h3>Backend Findings</h3>
+        ${findings.map(renderFinding).join("")}
+      </div>`,
+    );
+  }
+
+  if (anomalies.length) {
+    sections.push(
+      `<div class="diagnostic-section">
+        <h3>Kernel Anomalies</h3>
+        ${groupCounts(anomalies)
+          .map(
+            ({ value, count }) => `
+              <article class="diagnostic-item">
+                <strong>${count}x</strong>
+                <span>${escapeHtml(value)}</span>
+              </article>
+            `,
+          )
+          .join("")}
+      </div>`,
+    );
+  }
+
+  if (!sections.length) {
+    el.diagnostics.innerHTML = "<p>No findings or kernel anomalies in payload.</p>";
     return;
   }
 
-  el.diagnostics.innerHTML = groupCounts(anomalies)
-    .map(
-      ({ value, count }) => `
-        <article class="diagnostic-item">
-          <strong>${count}x</strong>
-          <span>${escapeHtml(value)}</span>
-        </article>
-      `,
-    )
-    .join("");
+  el.diagnostics.innerHTML = sections.join("");
 }
 
 function renderAnalysis(markdown) {
@@ -267,6 +293,68 @@ function setBusy(isBusy) {
 function benchmarkForDrive(name) {
   const result = state.payload?.benchmarks?.[name];
   return result ? `${result.write_mb_s} MB/s` : "not run";
+}
+
+function renderSmartDetails(smart) {
+  if (!smart) {
+    return `<p class="muted">No structured SMART report yet. Run Full Bench to collect one.</p>`;
+  }
+
+  const rows = [
+    ["Available", smart.available ? "yes" : "no"],
+    ["Passed", smart.passed === null || smart.passed === undefined ? "unknown" : smart.passed ? "yes" : "no"],
+    ["Transport", smart.transport ?? "unknown"],
+    ["Exit code", smart.smartctl_exit_code ?? "unknown"],
+    ["Model", smart.model ?? "unknown"],
+    ["Temperature", formatOptionalMetric(smart.temperature_celsius, " C")],
+    ["Power-on hours", smart.power_on_hours ?? "unknown"],
+    ["Percentage used", formatOptionalMetric(smart.percentage_used, "%")],
+    ["Reallocated sectors", smart.reallocated_sectors ?? "unknown"],
+    ["Pending sectors", smart.current_pending_sectors ?? "unknown"],
+    ["Offline uncorrectable", smart.offline_uncorrectable ?? "unknown"],
+    ["NVMe media errors", smart.media_errors ?? "unknown"],
+    ["NVMe error-log entries", smart.num_err_log_entries ?? "unknown"],
+  ];
+
+  const status = smart.exit_status_description?.length
+    ? `<p><strong>Exit status:</strong> ${escapeHtml(smart.exit_status_description.join("; "))}</p>`
+    : "";
+  const limitations = smart.limitations?.length
+    ? `<p><strong>Limitations:</strong> ${escapeHtml(smart.limitations.join("; "))}</p>`
+    : "";
+
+  return `
+    <dl class="smart-grid">
+      ${rows
+        .map(([label, value]) => `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd>`)
+        .join("")}
+    </dl>
+    ${status}
+    ${limitations}
+  `;
+}
+
+function renderFinding(finding) {
+  const severity = finding.severity ?? "notice";
+  const category = finding.category ?? "diagnostic";
+  const drive = finding.drive ? ` · ${finding.drive}` : "";
+  const action = finding.recommended_action
+    ? `<p><strong>Action:</strong> ${escapeHtml(finding.recommended_action)}</p>`
+    : "";
+
+  return `
+    <article class="finding finding-${escapeHtml(severity)}">
+      <div class="finding-meta">${escapeHtml(severity)} · ${escapeHtml(category)}${escapeHtml(drive)}</div>
+      <strong>${escapeHtml(finding.title ?? "Diagnostic finding")}</strong>
+      <p>${escapeHtml(finding.explanation ?? "")}</p>
+      <p><strong>Evidence:</strong> ${escapeHtml(finding.evidence ?? "none")}</p>
+      ${action}
+    </article>
+  `;
+}
+
+function formatOptionalMetric(value, unit) {
+  return value === null || value === undefined ? "unknown" : `${value}${unit}`;
 }
 
 function groupCounts(values) {

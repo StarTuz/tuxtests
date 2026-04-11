@@ -235,6 +235,11 @@ pre {
   overflow: auto;
 }
 
+.diagnostic-section {
+  display: grid;
+  gap: 0.7rem;
+}
+
 .diagnostic-item {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
@@ -249,6 +254,49 @@ pre {
 .diagnostic-item strong {
   color: var(--accent-2);
   font-family: "IBM Plex Mono", "JetBrains Mono", monospace;
+}
+
+.finding {
+  display: grid;
+  gap: 0.42rem;
+  border: 1px solid rgba(86, 241, 167, 0.18);
+  border-left: 4px solid var(--accent);
+  border-radius: 16px;
+  padding: 0.82rem;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.finding-warning,
+.finding-critical {
+  border-left-color: var(--warn);
+}
+
+.finding-notice {
+  border-left-color: var(--accent-2);
+}
+
+.finding p {
+  margin: 0;
+}
+
+.finding-meta,
+.muted {
+  color: var(--muted);
+}
+
+.finding-meta {
+  font-family: "IBM Plex Mono", "JetBrains Mono", monospace;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.smart-grid {
+  margin-bottom: 0.85rem;
+  padding: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.18);
 }
 
 pre {

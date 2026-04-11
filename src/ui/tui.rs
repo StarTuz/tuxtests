@@ -637,6 +637,52 @@ fn render_drive_details(frame: &mut ratatui::Frame, app: &App, area: Rect) {
             ]));
         }
 
+        if let Some(smart) = &drive.smart {
+            lines.push(Line::from(""));
+            lines.push(Line::from(Span::styled(
+                "SMART",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            )));
+            lines.push(Line::from(format!(
+                "- available={} passed={}",
+                smart.available,
+                smart
+                    .passed
+                    .map(|passed| passed.to_string())
+                    .unwrap_or_else(|| "unknown".to_string())
+            )));
+            lines.push(Line::from(format!(
+                "- transport={:?} exit_code={}",
+                smart.transport,
+                smart
+                    .smartctl_exit_code
+                    .map(|code| code.to_string())
+                    .unwrap_or_else(|| "unknown".to_string())
+            )));
+            push_optional_smart_line(&mut lines, "model", smart.model.as_deref());
+            push_optional_smart_line(&mut lines, "temperature", smart.temperature_celsius);
+            push_optional_smart_line(&mut lines, "power_on_hours", smart.power_on_hours);
+            push_optional_smart_line(&mut lines, "percentage_used", smart.percentage_used);
+            push_optional_smart_line(&mut lines, "reallocated", smart.reallocated_sectors);
+            push_optional_smart_line(&mut lines, "pending", smart.current_pending_sectors);
+            push_optional_smart_line(&mut lines, "media_errors", smart.media_errors);
+
+            if !smart.exit_status_description.is_empty() {
+                lines.push(Line::from(format!(
+                    "- exit: {}",
+                    smart.exit_status_description.join("; ")
+                )));
+            }
+            if !smart.limitations.is_empty() {
+                lines.push(Line::from(format!(
+                    "- limitations: {}",
+                    smart.limitations.join("; ")
+                )));
+            }
+        }
+
         if !drive.topology.is_empty() {
             lines.push(Line::from(""));
             lines.push(Line::from(Span::styled(
@@ -739,6 +785,34 @@ fn render_diagnostics(frame: &mut ratatui::Frame, app: &App, area: Rect) {
     }
 
     if let Some(payload) = &app.payload {
+        if !payload.findings.is_empty() {
+            if !lines.is_empty() {
+                lines.push(Line::from(""));
+            }
+            lines.push(Line::from(Span::styled(
+                "Findings",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            )));
+            for finding in &payload.findings {
+                let drive = finding
+                    .drive
+                    .as_ref()
+                    .map(|drive| format!(" [{}]", drive))
+                    .unwrap_or_default();
+                lines.push(Line::from(format!(
+                    "- {:?}/{:?}{}: {}",
+                    finding.severity, finding.category, drive, finding.title
+                )));
+                lines.push(Line::from(format!("  evidence: {}", finding.evidence)));
+                lines.push(Line::from(format!("  {}", finding.explanation)));
+                if let Some(action) = &finding.recommended_action {
+                    lines.push(Line::from(format!("  action: {}", action)));
+                }
+            }
+        }
+
         if !payload.kernel_anomalies.is_empty() {
             if !lines.is_empty() {
                 lines.push(Line::from(""));
@@ -772,6 +846,12 @@ fn render_diagnostics(frame: &mut ratatui::Frame, app: &App, area: Rect) {
         .scroll((app.diagnostics_scroll, 0))
         .wrap(Wrap { trim: true });
     frame.render_widget(panel, area);
+}
+
+fn push_optional_smart_line<T: ToString>(lines: &mut Vec<Line>, label: &str, value: Option<T>) {
+    if let Some(value) = value {
+        lines.push(Line::from(format!("- {label}: {}", value.to_string())));
+    }
 }
 
 fn render_config_modal(frame: &mut ratatui::Frame, app: &App) {
