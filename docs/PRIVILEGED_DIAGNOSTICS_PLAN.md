@@ -40,11 +40,20 @@ Status: implemented.
 
 ## Phase 5: Regression Coverage
 
-Status: started.
+Status: implemented.
 
 - Cover direct-root detection helper parsing for `/proc/self/status`.
 - Cover virtual block-device SMART skip decisions.
 - Cover informational finding classification for SMART-not-applicable devices.
+
+## Phase 6: SMART Advisory Findings
+
+Status: started.
+
+- Add threshold-based advisory findings for high SMART temperature.
+- Add threshold-based advisory findings for elevated NVMe percentage-used endurance values.
+- Add advisory findings for notable NVMe unsafe-shutdown counts.
+- Keep these as planning/triage guidance rather than definitive failure claims.
 
 ## Remaining Work
 

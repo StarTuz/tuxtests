@@ -232,6 +232,8 @@ fn build_findings(
                         drive: Some(drive.name.clone()),
                     });
                 }
+
+                findings.extend(smart_advisory_findings(drive, report));
             }
         }
     }
@@ -314,6 +316,80 @@ fn smart_counter_findings(
         .collect()
 }
 
+fn smart_advisory_findings(
+    drive: &models::DriveInfo,
+    report: &models::SmartReport,
+) -> Vec<models::DiagnosticFinding> {
+    let mut findings = Vec::new();
+
+    if let Some(temperature) = report.temperature_celsius {
+        let severity = if temperature >= 70 {
+            Some(models::FindingSeverity::Critical)
+        } else if temperature >= 60 {
+            Some(models::FindingSeverity::Warning)
+        } else {
+            None
+        };
+
+        if let Some(severity) = severity {
+            findings.push(models::DiagnosticFinding {
+                category: models::FindingCategory::Smart,
+                severity,
+                title: format!("High SMART temperature on {}", drive.name),
+                evidence: format!("temperature_celsius={temperature}"),
+                explanation: "Sustained high drive temperature can shorten device lifespan and may throttle performance. This finding is threshold-based and should be interpreted with workload and sensor accuracy in mind.".to_string(),
+                recommended_action: Some(
+                    "Improve airflow or drive placement, rerun the scan after the system idles, and compare with vendor temperature guidance.".to_string(),
+                ),
+                confidence: "medium".to_string(),
+                drive: Some(drive.name.clone()),
+            });
+        }
+    }
+
+    if let Some(percentage_used) = report.percentage_used {
+        let severity = if percentage_used >= 100 {
+            Some(models::FindingSeverity::Warning)
+        } else if percentage_used >= 80 {
+            Some(models::FindingSeverity::Notice)
+        } else {
+            None
+        };
+
+        if let Some(severity) = severity {
+            findings.push(models::DiagnosticFinding {
+                category: models::FindingCategory::Smart,
+                severity,
+                title: format!("NVMe endurance usage is elevated on {}", drive.name),
+                evidence: format!("percentage_used={percentage_used}"),
+                explanation: "NVMe percentage-used estimates consumed endurance. It is not the same as immediate failure, but high values are useful for replacement planning.".to_string(),
+                recommended_action: Some(
+                    "Check whether the value is stable over time, verify backups, and plan replacement if endurance usage keeps rising toward or beyond 100%.".to_string(),
+                ),
+                confidence: "medium".to_string(),
+                drive: Some(drive.name.clone()),
+            });
+        }
+    }
+
+    if report.unsafe_shutdowns.is_some_and(|count| count >= 10) {
+        findings.push(models::DiagnosticFinding {
+            category: models::FindingCategory::Smart,
+            severity: models::FindingSeverity::Notice,
+            title: format!("NVMe unsafe shutdown count is notable on {}", drive.name),
+            evidence: format!("unsafe_shutdowns={}", report.unsafe_shutdowns.unwrap_or_default()),
+            explanation: "Unsafe shutdown counts can indicate power loss, forced resets, or enclosure disconnects. A static historical count is less concerning than a count that continues to rise.".to_string(),
+            recommended_action: Some(
+                "Recheck after normal use and investigate power, cabling, or enclosure stability if the count increases.".to_string(),
+            ),
+            confidence: "medium".to_string(),
+            drive: Some(drive.name.clone()),
+        });
+    }
+
+    findings
+}
+
 fn smart_skip_reason(drive: &models::DriveInfo) -> Option<String> {
     if drive.physical_path.contains("/virtual/") {
         return Some("virtual block device".to_string());
@@ -389,5 +465,43 @@ mod tests {
         assert_eq!(findings[0].category, models::FindingCategory::Smart);
         assert_eq!(findings[0].severity, models::FindingSeverity::Info);
         assert_eq!(findings[0].recommended_action, None);
+    }
+
+    #[test]
+    fn creates_temperature_and_endurance_smart_advisories() {
+        let drive = test_drive("nvme0n1", "/sys/devices/pci0000:00/0000:00:1b.4/nvme/nvme0");
+        let report = models::SmartReport {
+            available: true,
+            passed: Some(true),
+            transport: models::SmartTransport::Nvme,
+            model: Some("Mock NVMe".to_string()),
+            serial: None,
+            temperature_celsius: Some(72),
+            power_on_hours: Some(1000),
+            power_cycles: Some(10),
+            unsafe_shutdowns: Some(12),
+            percentage_used: Some(85),
+            reallocated_sectors: None,
+            current_pending_sectors: None,
+            offline_uncorrectable: None,
+            media_errors: Some(0),
+            num_err_log_entries: Some(0),
+            self_test_status: None,
+            smartctl_exit_code: Some(0),
+            exit_status_description: Vec::new(),
+            limitations: Vec::new(),
+        };
+
+        let findings = smart_advisory_findings(&drive, &report);
+        assert_eq!(findings.len(), 3);
+        assert!(findings
+            .iter()
+            .any(|finding| finding.title.contains("High SMART temperature")));
+        assert!(findings
+            .iter()
+            .any(|finding| finding.title.contains("endurance usage")));
+        assert!(findings
+            .iter()
+            .any(|finding| finding.title.contains("unsafe shutdown")));
     }
 }
