@@ -248,10 +248,12 @@ mod tests {
                 pcie_path,
                 serial: None,
                 smartctl_exit_code: None,
+                smart: None,
                 parent: None,
                 is_luks: None,
             }],
             benchmarks: BTreeMap::new(),
+            findings: Vec::new(),
             kernel_anomalies: Vec::new(),
             fstab: Vec::new(),
         }

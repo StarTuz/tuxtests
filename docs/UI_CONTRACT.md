@@ -39,7 +39,10 @@ Purpose: Return the enriched hardware payload including SMART and benchmark resu
 Behavior:
 - Writes pretty-printed `TuxPayload` JSON to `stdout`
 - Writes progress, warnings, and diagnostics to `stderr`
-- Includes SMART exit codes, benchmark results, and privilege-related anomalies when available
+- Runs the same backend path used by the TUI and Tauri `full_bench=true` command
+- Includes structured SMART reports from `smartctl -x -j` when privileged access succeeds
+- Preserves SMART exit codes, exit-status descriptions, benchmark results, and privilege-related anomalies when available
+- Adds cautious backend-derived `findings` for SMART availability, failed SMART status, non-zero SMART counters, and PCIe error-containment leads
 
 ## Output Rules
 
@@ -53,6 +56,13 @@ Behavior:
 - `TuxPayload`: [src/models.rs](/home/startux/Code/tuxtests/src/models.rs)
 - CLI behavior: [src/main.rs](/home/startux/Code/tuxtests/src/main.rs)
 - AI payload example: [GEMINI.md](/home/startux/Code/tuxtests/GEMINI.md)
+
+Important schema fields for diagnostics:
+
+- `DriveInfo.smart`: optional structured SMART report; absent when a deep SMART pass has not been run
+- `DriveInfo.smartctl_exit_code`: raw smartctl exit code when available
+- `TuxPayload.findings`: backend-derived diagnostic leads intended for UI rendering before any AI explanation
+- `TuxPayload.kernel_anomalies`: raw anomaly strings preserved for context and AI prompting
 
 ## In-Process UI Facade
 

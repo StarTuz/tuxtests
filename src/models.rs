@@ -9,6 +9,8 @@ pub struct TuxPayload {
 
     /// BTreeMap ensures benchmark ordering natively resolves identically for the LLM
     pub benchmarks: BTreeMap<String, BenchmarkResult>,
+    #[serde(default)]
+    pub findings: Vec<DiagnosticFinding>,
     pub kernel_anomalies: Vec<String>,
     pub fstab: Vec<FstabEntry>,
 }
@@ -48,8 +50,76 @@ pub struct DriveInfo {
     // Optional properties depending on disk topology topology edge cases
     pub serial: Option<String>,
     pub smartctl_exit_code: Option<i32>,
+    #[serde(default)]
+    pub smart: Option<SmartReport>,
     pub parent: Option<String>,
     pub is_luks: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum FindingCategory {
+    Smart,
+    Pcie,
+    Topology,
+    Capacity,
+    Benchmark,
+    Privilege,
+    Logs,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum FindingSeverity {
+    Info,
+    Notice,
+    Warning,
+    Critical,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct DiagnosticFinding {
+    pub category: FindingCategory,
+    pub severity: FindingSeverity,
+    pub title: String,
+    pub evidence: String,
+    pub explanation: String,
+    pub recommended_action: Option<String>,
+    pub confidence: String,
+    pub drive: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SmartTransport {
+    Ata,
+    Nvme,
+    Scsi,
+    UsbBridge,
+    Unknown,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct SmartReport {
+    pub available: bool,
+    pub passed: Option<bool>,
+    pub transport: SmartTransport,
+    pub model: Option<String>,
+    pub serial: Option<String>,
+    pub temperature_celsius: Option<i64>,
+    pub power_on_hours: Option<i64>,
+    pub power_cycles: Option<i64>,
+    pub unsafe_shutdowns: Option<i64>,
+    pub percentage_used: Option<i64>,
+    pub reallocated_sectors: Option<i64>,
+    pub current_pending_sectors: Option<i64>,
+    pub offline_uncorrectable: Option<i64>,
+    pub media_errors: Option<i64>,
+    pub num_err_log_entries: Option<i64>,
+    pub self_test_status: Option<String>,
+    pub smartctl_exit_code: Option<i32>,
+    pub exit_status_description: Vec<String>,
+    pub limitations: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

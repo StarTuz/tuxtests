@@ -26,6 +26,7 @@ These backend pieces should continue to own the core behavior:
 - [src/bench](/home/startux/Code/tuxtests/src/bench): SMART and benchmark logic
 - [src/ai](/home/startux/Code/tuxtests/src/ai): provider routing, prompts, config, and RAG behavior
 - [docs/UI_CONTRACT.md](/home/startux/Code/tuxtests/docs/UI_CONTRACT.md): supported integration contract
+- [docs/PRIVILEGED_DIAGNOSTICS_PLAN.md](/home/startux/Code/tuxtests/docs/PRIVILEGED_DIAGNOSTICS_PLAN.md): privileged SMART and diagnostic hardening plan
 
 ## Layering Strategy
 

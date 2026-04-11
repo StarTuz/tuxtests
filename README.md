@@ -48,7 +48,7 @@ tuxtests --set-gemini-key "your_api_key_here"
 # Run a standard unprivileged analysis
 tuxtests --analyze
 
-# Run a privileged scan including SMART health and benchmarks
+# Run a privileged scan including structured SMART health and benchmarks
 tuxtests --full-bench
 
 # Point at a non-default local or remote Ollama endpoint
@@ -78,7 +78,7 @@ The first Tauri slice lives in `src-tauri/` and intentionally stays thin:
 - `get_config` calls the shared Rust config facade.
 - `update_config` applies provider/model/url edits through the shared Rust validation path.
 - `get_payload` calls the shared Rust hardware payload collector.
-- `get_payload(full_bench=true)` uses the same deeper SMART/benchmark path as the CLI/TUI.
+- `get_payload(full_bench=true)` uses the same deeper structured SMART/benchmark path as the CLI/TUI.
 - `analyze_payload` calls the quiet shared AI analysis path.
 - The frontend only renders system, drive, diagnostic, and analysis data returned by the backend.
 

@@ -120,6 +120,7 @@ pub fn scan_drives() -> Vec<(DriveInfo, Option<String>)> {
             pcie_path,
             serial: dev.serial.filter(|value| !value.trim().is_empty()),
             smartctl_exit_code: None,
+            smart: None,
             parent: dev.pkname,
             is_luks,
         };
