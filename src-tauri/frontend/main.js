@@ -65,13 +65,14 @@ function renderSummary() {
   const usbCount = drives.filter((drive) => drive.connection.toLowerCase().includes("usb")).length;
   const warningCount = drives.filter((drive) => !drive.health_ok).length;
   const anomalyCount = state.payload.kernel_anomalies?.length ?? 0;
+  const uniqueAnomalyCount = groupCounts(state.payload.kernel_anomalies ?? []).length;
   const benchmarkCount = Object.keys(state.payload.benchmarks ?? {}).length;
 
   el.summary.innerHTML = `
     <span>${drives.length} drives</span>
     <span>${usbCount} USB</span>
     <span>${warningCount} warnings</span>
-    <span>${anomalyCount} anomalies</span>
+    <span>${uniqueAnomalyCount}/${anomalyCount} anomaly types</span>
     <span>${benchmarkCount} benchmarks</span>
   `;
 }
@@ -160,7 +161,21 @@ function renderDetails() {
 
 function renderDiagnostics() {
   const anomalies = state.payload?.kernel_anomalies ?? [];
-  el.diagnostics.textContent = anomalies.length ? anomalies.join("\n\n") : "No kernel anomalies in payload.";
+  if (!anomalies.length) {
+    el.diagnostics.innerHTML = "<p>No kernel anomalies in payload.</p>";
+    return;
+  }
+
+  el.diagnostics.innerHTML = groupCounts(anomalies)
+    .map(
+      ({ value, count }) => `
+        <article class="diagnostic-item">
+          <strong>${count}x</strong>
+          <span>${escapeHtml(value)}</span>
+        </article>
+      `,
+    )
+    .join("");
 }
 
 function renderAnalysis(markdown) {
@@ -252,6 +267,17 @@ function setBusy(isBusy) {
 function benchmarkForDrive(name) {
   const result = state.payload?.benchmarks?.[name];
   return result ? `${result.write_mb_s} MB/s` : "not run";
+}
+
+function groupCounts(values) {
+  const grouped = new Map();
+  for (const value of values) {
+    grouped.set(value, (grouped.get(value) ?? 0) + 1);
+  }
+
+  return [...grouped.entries()]
+    .map(([value, count]) => ({ value, count }))
+    .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
 }
 
 function setAnalysisMode(mode) {
