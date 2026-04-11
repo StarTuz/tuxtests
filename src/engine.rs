@@ -162,11 +162,14 @@ fn build_findings(
             if let Some(report) = &drive.smart {
                 if !report.available {
                     let not_applicable = report.status == models::SmartProbeStatus::NotApplicable;
+                    let privilege_issue = report.status == models::SmartProbeStatus::AccessDenied;
                     findings.push(models::DiagnosticFinding {
                         category: if not_applicable {
                             models::FindingCategory::Smart
-                        } else {
+                        } else if privilege_issue {
                             models::FindingCategory::Privilege
+                        } else {
+                            models::FindingCategory::Smart
                         },
                         severity: if not_applicable {
                             models::FindingSeverity::Info
@@ -189,6 +192,10 @@ fn build_findings(
                         },
                         recommended_action: if not_applicable {
                             None
+                        } else if report.status == models::SmartProbeStatus::Unsupported {
+                            Some(
+                                "Check whether this USB bridge needs an explicit smartctl device type such as -d sat, -d scsi, or a vendor-specific bridge option.".to_string(),
+                            )
                         } else {
                             Some(
                                 "Run the deeper scan from a session where polkit or sudo can grant smartctl access, then compare the structured SMART report.".to_string(),
@@ -391,6 +398,10 @@ fn smart_advisory_findings(
 }
 
 fn smart_skip_reason(drive: &models::DriveInfo) -> Option<String> {
+    if drive.fstype.as_deref() == Some("iso9660") {
+        return Some("read-only optical or installation media".to_string());
+    }
+
     if drive.physical_path.contains("/virtual/") {
         return Some("virtual block device".to_string());
     }
@@ -452,6 +463,16 @@ mod tests {
         assert_eq!(
             smart_skip_reason(&drive).as_deref(),
             Some("virtual block device")
+        );
+    }
+
+    #[test]
+    fn skips_iso9660_media_for_smart() {
+        let mut drive = test_drive("sdj", "/sys/devices/pci0000:00/usb1/1-7/block/sdj");
+        drive.fstype = Some("iso9660".to_string());
+        assert_eq!(
+            smart_skip_reason(&drive).as_deref(),
+            Some("read-only optical or installation media")
         );
     }
 

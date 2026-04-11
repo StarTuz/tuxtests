@@ -168,7 +168,7 @@ fn parse_smart_json(
     let json: Value = serde_json::from_str(stdout)?;
     let nvme_log = json.get("nvme_smart_health_information_log");
 
-    Ok(SmartReport {
+    let mut report = SmartReport {
         status: SmartProbeStatus::Available,
         available: true,
         passed: json
@@ -215,8 +215,16 @@ fn parse_smart_json(
             .map(str::to_string),
         smartctl_exit_code: exit_code,
         exit_status_description,
-        limitations: Vec::new(),
-    })
+        limitations: smartctl_messages(&json),
+    };
+
+    if !has_usable_smart_facts(&report) {
+        report.available = false;
+        report.status =
+            unavailable_status_from_json(exit_code.unwrap_or_default(), &report.limitations);
+    }
+
+    Ok(report)
 }
 
 fn infer_health_ok(report: &SmartReport, code: i32) -> bool {
@@ -262,13 +270,24 @@ fn describe_exit_status(code: i32) -> Vec<String> {
 }
 
 fn transport_from_json(json: &Value) -> SmartTransport {
-    let transport = string_at(json, &["/device/type", "/device/protocol"])
-        .unwrap_or_default()
-        .to_lowercase();
+    let transport = [
+        string_at(json, &["/device/type"]),
+        string_at(json, &["/device/protocol"]),
+        string_at(json, &["/device/name"]),
+    ]
+    .into_iter()
+    .flatten()
+    .collect::<Vec<_>>()
+    .join(" ")
+    .to_lowercase();
 
     if transport.contains("nvme") {
         SmartTransport::Nvme
-    } else if transport.contains("usb") {
+    } else if transport.contains("snt")
+        || transport.contains("usb")
+        || transport.contains("jmicron")
+        || transport.contains("asmedia")
+    {
         SmartTransport::UsbBridge
     } else if transport.contains("scsi") {
         SmartTransport::Scsi
@@ -277,6 +296,55 @@ fn transport_from_json(json: &Value) -> SmartTransport {
     } else {
         SmartTransport::Unknown
     }
+}
+
+fn has_usable_smart_facts(report: &SmartReport) -> bool {
+    report.passed.is_some()
+        || report.model.is_some()
+        || report.serial.is_some()
+        || report.temperature_celsius.is_some()
+        || report.power_on_hours.is_some()
+        || report.power_cycles.is_some()
+        || report.unsafe_shutdowns.is_some()
+        || report.percentage_used.is_some()
+        || report.reallocated_sectors.is_some()
+        || report.current_pending_sectors.is_some()
+        || report.offline_uncorrectable.is_some()
+        || report.media_errors.is_some()
+        || report.num_err_log_entries.is_some()
+        || report.self_test_status.is_some()
+}
+
+fn unavailable_status_from_json(code: i32, limitations: &[String]) -> SmartProbeStatus {
+    let limitation_text = limitations.join("\n").to_lowercase();
+
+    if limitation_text.contains("unknown usb bridge")
+        || limitation_text.contains("unsupported")
+        || limitation_text.contains("please specify device type")
+    {
+        SmartProbeStatus::Unsupported
+    } else if code & 2 != 0 {
+        SmartProbeStatus::AccessDenied
+    } else if code & 1 != 0 {
+        SmartProbeStatus::ParseFailed
+    } else {
+        SmartProbeStatus::Unknown
+    }
+}
+
+fn smartctl_messages(json: &Value) -> Vec<String> {
+    json.pointer("/smartctl/messages")
+        .and_then(Value::as_array)
+        .map(|messages| {
+            messages
+                .iter()
+                .filter_map(|message| message.get("string").and_then(Value::as_str))
+                .map(str::trim)
+                .filter(|message| !message.is_empty())
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 fn ata_raw_attribute_any(json: &Value, names: &[&str], ids: &[i64]) -> Option<i64> {
@@ -377,7 +445,7 @@ mod tests {
     #[test]
     fn parses_nvme_smart_json() {
         let json = r#"{
-            "device": {"type": "nvme"},
+            "device": {"type": "sntasmedia", "protocol": "NVMe"},
             "model_name": "Lexar NM790",
             "serial_number": "ABC123",
             "smart_status": {"passed": true},
@@ -394,6 +462,8 @@ mod tests {
 
         let report = parse_smart_json(json, Some(0), Vec::new()).unwrap();
         assert_eq!(report.transport, SmartTransport::Nvme);
+        assert_eq!(report.status, SmartProbeStatus::Available);
+        assert!(report.available);
         assert_eq!(report.model.as_deref(), Some("Lexar NM790"));
         assert_eq!(report.serial.as_deref(), Some("ABC123"));
         assert_eq!(report.passed, Some(true));
@@ -477,6 +547,31 @@ mod tests {
         let report = parse_smart_json(json, Some(0), Vec::new()).unwrap();
         assert_eq!(report.transport, SmartTransport::Scsi);
         assert_eq!(report.reallocated_sectors, Some(3));
+    }
+
+    #[test]
+    fn marks_json_error_payload_without_smart_facts_unavailable() {
+        let json = r#"{
+            "smartctl": {
+                "messages": [
+                    {
+                        "severity": "error",
+                        "string": "Unknown USB bridge. Please specify device type with the -d option."
+                    }
+                ]
+            },
+            "device": {"type": "unknown"}
+        }"#;
+
+        let report = parse_smart_json(
+            json,
+            Some(1),
+            vec!["command line did not parse".to_string()],
+        )
+        .unwrap();
+        assert!(!report.available);
+        assert_eq!(report.status, SmartProbeStatus::Unsupported);
+        assert_eq!(report.limitations.len(), 1);
     }
 
     #[test]

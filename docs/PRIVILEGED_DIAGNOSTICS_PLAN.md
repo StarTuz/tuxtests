@@ -71,6 +71,9 @@ Status: started.
 - Add a structured SMART probe status to distinguish available, not-applicable, access-denied, missing-tool, execution-failed, and parse-failed states.
 - Use the structured status for backend finding classification instead of inferring from limitation text.
 - Surface the probe status in TUI and Tauri SMART detail views.
+- Mark parsed smartctl JSON with no usable SMART facts as unavailable instead of `available`.
+- Preserve smartctl JSON message strings as report limitations for unsupported bridge/device-type cases.
+- Skip read-only `iso9660` installation/optical media from SMART probes.
 
 ## Remaining Work
 

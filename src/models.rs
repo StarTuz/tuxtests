@@ -105,6 +105,7 @@ pub enum SmartProbeStatus {
     Available,
     NotApplicable,
     AccessDenied,
+    Unsupported,
     ToolMissing,
     ExecutionFailed,
     ParseFailed,

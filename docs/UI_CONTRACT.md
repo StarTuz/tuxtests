@@ -60,7 +60,7 @@ Behavior:
 Important schema fields for diagnostics:
 
 - `DriveInfo.smart`: optional structured SMART report; absent when a deep SMART pass has not been run
-- `DriveInfo.smart.status`: structured SMART probe state such as `available`, `not_applicable`, `access_denied`, `tool_missing`, `execution_failed`, or `parse_failed`
+- `DriveInfo.smart.status`: structured SMART probe state such as `available`, `not_applicable`, `access_denied`, `unsupported`, `tool_missing`, `execution_failed`, or `parse_failed`
 - `DriveInfo.smartctl_exit_code`: raw smartctl exit code when available
 - `TuxPayload.findings`: backend-derived diagnostic leads intended for UI rendering before any AI explanation
 - `TuxPayload.kernel_anomalies`: raw anomaly strings preserved for context and AI prompting
