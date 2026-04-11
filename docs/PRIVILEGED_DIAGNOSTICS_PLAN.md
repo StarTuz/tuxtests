@@ -48,12 +48,21 @@ Status: implemented.
 
 ## Phase 6: SMART Advisory Findings
 
-Status: started.
+Status: implemented.
 
 - Add threshold-based advisory findings for high SMART temperature.
 - Add threshold-based advisory findings for elevated NVMe percentage-used endurance values.
 - Add advisory findings for notable NVMe unsafe-shutdown counts.
 - Keep these as planning/triage guidance rather than definitive failure claims.
+
+## Phase 7: SMART Parser Coverage
+
+Status: started.
+
+- Parse common ATA SMART attributes by ID as well as by canonical attribute name.
+- Parse ATA raw string values when raw numeric values are not present.
+- Use ATA SMART attributes as fallbacks for temperature, power-on hours, and power-cycle counts.
+- Map SCSI grown defect counts into the existing degradation counter field.
 
 ## Remaining Work
 

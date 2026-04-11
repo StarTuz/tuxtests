@@ -170,18 +170,23 @@ fn parse_smart_json(
                 "/temperature/current",
                 "/nvme_smart_health_information_log/temperature",
             ],
-        ),
-        power_on_hours: integer_at(&json, &["/power_on_time/hours"]),
-        power_cycles: integer_at(&json, &["/power_cycle_count"]),
+        )
+        .or_else(|| ata_raw_attribute_any(&json, &["Temperature_Celsius"], &[194]))
+        .or_else(|| ata_raw_attribute_any(&json, &["Airflow_Temperature_Cel"], &[190])),
+        power_on_hours: integer_at(&json, &["/power_on_time/hours"])
+            .or_else(|| ata_raw_attribute_any(&json, &["Power_On_Hours"], &[9])),
+        power_cycles: integer_at(&json, &["/power_cycle_count"])
+            .or_else(|| ata_raw_attribute_any(&json, &["Power_Cycle_Count"], &[12])),
         unsafe_shutdowns: nvme_log
             .and_then(|log| log.get("unsafe_shutdowns"))
             .and_then(value_to_i64),
         percentage_used: nvme_log
             .and_then(|log| log.get("percentage_used"))
             .and_then(value_to_i64),
-        reallocated_sectors: ata_raw_attribute(&json, "Reallocated_Sector_Ct"),
-        current_pending_sectors: ata_raw_attribute(&json, "Current_Pending_Sector"),
-        offline_uncorrectable: ata_raw_attribute(&json, "Offline_Uncorrectable"),
+        reallocated_sectors: ata_raw_attribute_any(&json, &["Reallocated_Sector_Ct"], &[5])
+            .or_else(|| integer_at(&json, &["/scsi_grown_defect_list"])),
+        current_pending_sectors: ata_raw_attribute_any(&json, &["Current_Pending_Sector"], &[197]),
+        offline_uncorrectable: ata_raw_attribute_any(&json, &["Offline_Uncorrectable"], &[198]),
         media_errors: nvme_log
             .and_then(|log| log.get("media_errors"))
             .and_then(value_to_i64),
@@ -258,17 +263,31 @@ fn transport_from_json(json: &Value) -> SmartTransport {
     }
 }
 
-fn ata_raw_attribute(json: &Value, name: &str) -> Option<i64> {
+fn ata_raw_attribute_any(json: &Value, names: &[&str], ids: &[i64]) -> Option<i64> {
     json.pointer("/ata_smart_attributes/table")
         .and_then(Value::as_array)?
         .iter()
-        .find(|attribute| attribute.get("name").and_then(Value::as_str) == Some(name))
+        .find(|attribute| ata_attribute_matches(attribute, names, ids))
         .and_then(|attribute| {
             attribute
                 .pointer("/raw/value")
                 .and_then(value_to_i64)
+                .or_else(|| attribute.pointer("/raw/string").and_then(value_to_i64))
                 .or_else(|| attribute.get("value").and_then(value_to_i64))
         })
+}
+
+fn ata_attribute_matches(attribute: &Value, names: &[&str], ids: &[i64]) -> bool {
+    let name_matches = attribute
+        .get("name")
+        .and_then(Value::as_str)
+        .is_some_and(|name| names.contains(&name));
+    let id_matches = attribute
+        .get("id")
+        .and_then(value_to_i64)
+        .is_some_and(|id| ids.contains(&id));
+
+    name_matches || id_matches
 }
 
 fn string_at(json: &Value, paths: &[&str]) -> Option<String> {
@@ -400,6 +419,48 @@ mod tests {
             report.self_test_status.as_deref(),
             Some("Completed without error")
         );
+    }
+
+    #[test]
+    fn parses_ata_smart_attributes_by_id_and_raw_string() {
+        let json = r#"{
+            "device": {"type": "ata"},
+            "smart_status": {"passed": true},
+            "ata_smart_attributes": {
+                "table": [
+                    {"id": 5, "name": "Vendor_Reallocated", "raw": {"string": "4"}},
+                    {"id": 9, "name": "Vendor_Power_On", "raw": {"string": "5000"}},
+                    {"id": 12, "name": "Vendor_Power_Cycle", "raw": {"value": 22}},
+                    {"id": 190, "name": "Airflow_Temperature_Cel", "raw": {"value": 44}},
+                    {"id": 197, "name": "Vendor_Pending", "raw": {"value": 1}},
+                    {"id": 198, "name": "Vendor_Uncorrectable", "raw": {"value": 2}}
+                ]
+            }
+        }"#;
+
+        let report = parse_smart_json(json, Some(0), Vec::new()).unwrap();
+        assert_eq!(report.transport, SmartTransport::Ata);
+        assert_eq!(report.reallocated_sectors, Some(4));
+        assert_eq!(report.power_on_hours, Some(5000));
+        assert_eq!(report.power_cycles, Some(22));
+        assert_eq!(report.temperature_celsius, Some(44));
+        assert_eq!(report.current_pending_sectors, Some(1));
+        assert_eq!(report.offline_uncorrectable, Some(2));
+    }
+
+    #[test]
+    fn parses_scsi_grown_defect_count() {
+        let json = r#"{
+            "device": {"type": "scsi"},
+            "smart_status": {"passed": true},
+            "vendor": "SEAGATE",
+            "product": "ST1000",
+            "scsi_grown_defect_list": 3
+        }"#;
+
+        let report = parse_smart_json(json, Some(0), Vec::new()).unwrap();
+        assert_eq!(report.transport, SmartTransport::Scsi);
+        assert_eq!(report.reallocated_sectors, Some(3));
     }
 
     #[test]
