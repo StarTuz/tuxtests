@@ -22,17 +22,34 @@ Status: started.
 
 ## Phase 3: UI Surfacing
 
-Status: started.
+Status: implemented.
 
 - Render backend-derived findings in the TUI diagnostics panel before raw kernel anomalies.
 - Render selected-drive SMART details in the TUI drive details panel.
 - Render backend-derived findings in the Tauri diagnostics card before raw kernel anomalies.
 - Render selected-drive SMART details in the Tauri selected-drive card.
 
+## Phase 4: Privilege Noise Reduction
+
+Status: implemented.
+
+- Use direct `smartctl -x -j` when TuxTests is already running with effective UID 0.
+- Use `pkexec smartctl -x -j` only for unprivileged desktop-user sessions.
+- Skip SMART probes for virtual or mapped block devices such as zram, loop, RAM disks, and dm nodes.
+- Represent skipped devices as informational backend findings rather than warnings.
+
+## Phase 5: Regression Coverage
+
+Status: started.
+
+- Cover direct-root detection helper parsing for `/proc/self/status`.
+- Cover virtual block-device SMART skip decisions.
+- Cover informational finding classification for SMART-not-applicable devices.
+
 ## Remaining Work
 
 - Add richer SMART attribute coverage for USB bridge and SCSI/SAT edge cases.
-- Add a privilege strategy that avoids repeated polkit prompt spam, likely by documenting sudo mode first and then adding an explicit elevated helper path.
+- Continue refining privilege strategy to avoid repeated prompts across multiple real disks, likely by documenting sudo mode first and then adding an explicit elevated helper path.
 - Add fixture-based regression tests for real-world smartctl JSON from NVMe, SATA HDD, SATA SSD, USB bridge, and access-denied outputs.
 - Add trend/history support later so warnings can distinguish static old counters from actively worsening drives.
 

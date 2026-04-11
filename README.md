@@ -8,7 +8,7 @@ The current committed Rust CLI/backend is the source of truth. Ratatui and Tauri
 
 - **Core Hardware Investigation**: CPU, RAM, kernel, hostname, motherboard, and block device identification using `sysinfo`, `lsblk`, and Linux system files.
 - **Connection Intelligence**: [ACTIVE] Deep `udev` tree traversal to identify physical port bottlenecks (e.g., fast SSDs on legacy USB 2.0 ports).
-- **S.M.A.R.T. Integration**: [ACTIVE] Drive health monitoring via `smartctl` with Polkit elevation.
+- **S.M.A.R.T. Integration**: [ACTIVE] Structured `smartctl -x -j` drive health monitoring with direct root execution or Polkit elevation.
 - **Non-Destructive Benchmarking**: [ACTIVE] Buffered read/write testing with 5GB and 10% free-space safety checks.
 - **AI-Driven Analysis**: [ACTIVE] Integration with Google Gemini (Cloud) and Ollama (Local) for bottleneck identification.
 - **Hybrid Log-Scraping RAG**: [ACTIVE] Context-aware log retrieval using identifier-based filtering over `dmesg` and `journalctl`.
@@ -32,7 +32,7 @@ The current committed Rust CLI/backend is the source of truth. Ratatui and Tauri
 - **Security**: `keyring` (Secure API key storage), `Polkit` (Privilege elevation)
 - **Networking**: `reqwest` (Async HTTP with 60s safeguards)
 
-Gemini keys are stored in the current desktop user's native keyring. A sudo-launched TuxTests session can reuse the invoking user's config file, but root normally cannot read that user's keyring secret. Prefer non-sudo Gemini analysis, Polkit-backed `--full-bench`, or Ollama for sudo-launched workflows.
+Gemini keys are stored in the current desktop user's native keyring. A sudo-launched TuxTests session can reuse the invoking user's config file, but root normally cannot read that user's keyring secret. Prefer non-sudo Gemini analysis, Polkit-backed `--full-bench`, or Ollama for sudo-launched workflows. When TuxTests is already running as root, the SMART path calls `smartctl` directly instead of nesting Polkit prompts.
 
 ## ⌨️ Usage
 

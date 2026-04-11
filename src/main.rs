@@ -13,7 +13,7 @@ struct Args {
     #[arg(short, long)]
     analyze: bool,
 
-    /// Trigger root Polkit privileges for deep SMART tracking & destructive benchmarking
+    /// Trigger deeper SMART tracking and non-destructive benchmarking
     #[arg(long)]
     full_bench: bool,
 

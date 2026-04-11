@@ -87,11 +87,19 @@ pub fn collect_payload(full_bench: bool) -> models::TuxPayload {
         kernel_anomalies.append(&mut drive_anomalies);
 
         if full_bench {
-            eprintln!(
-                "🔒 Triggering Privileged Polkit S.M.A.R.T diagnostic on {}...",
-                drive.name
-            );
-            let smart_outcome = bench::smart::check_health(&drive.name);
+            let smart_outcome = if let Some(reason) = smart_skip_reason(&drive) {
+                eprintln!(
+                    "ℹ Skipping S.M.A.R.T diagnostic on {}: {}",
+                    drive.name, reason
+                );
+                bench::smart::skipped(reason)
+            } else {
+                eprintln!(
+                    "🔒 Triggering privileged S.M.A.R.T diagnostic on {}...",
+                    drive.name
+                );
+                bench::smart::check_health(&drive.name)
+            };
             drive.health_ok = smart_outcome.health_ok;
             drive.smartctl_exit_code = smart_outcome.exit_code;
             drive.smart = smart_outcome.report;
@@ -153,15 +161,39 @@ fn build_findings(
         for drive in drives {
             if let Some(report) = &drive.smart {
                 if !report.available {
+                    let not_applicable = report
+                        .limitations
+                        .iter()
+                        .any(|limitation| limitation.contains("SMART not applicable"));
                     findings.push(models::DiagnosticFinding {
-                        category: models::FindingCategory::Privilege,
-                        severity: models::FindingSeverity::Notice,
-                        title: format!("SMART data unavailable for {}", drive.name),
+                        category: if not_applicable {
+                            models::FindingCategory::Smart
+                        } else {
+                            models::FindingCategory::Privilege
+                        },
+                        severity: if not_applicable {
+                            models::FindingSeverity::Info
+                        } else {
+                            models::FindingSeverity::Notice
+                        },
+                        title: if not_applicable {
+                            format!("SMART skipped for {}", drive.name)
+                        } else {
+                            format!("SMART data unavailable for {}", drive.name)
+                        },
                         evidence: report.limitations.join("; "),
-                        explanation: "TuxTests could not collect structured SMART data for this drive, so health interpretation is limited to the available kernel and topology data.".to_string(),
-                        recommended_action: Some(
-                            "Run the deeper scan from a session where polkit or sudo can grant smartctl access, then compare the structured SMART report.".to_string(),
-                        ),
+                        explanation: if not_applicable {
+                            "This block device is not a physical SMART-capable target, so skipping it avoids noisy privileged probes.".to_string()
+                        } else {
+                            "TuxTests could not collect structured SMART data for this drive, so health interpretation is limited to the available kernel and topology data.".to_string()
+                        },
+                        recommended_action: if not_applicable {
+                            None
+                        } else {
+                            Some(
+                                "Run the deeper scan from a session where polkit or sudo can grant smartctl access, then compare the structured SMART report.".to_string(),
+                            )
+                        },
                         confidence: "high".to_string(),
                         drive: Some(drive.name.clone()),
                     });
@@ -282,6 +314,23 @@ fn smart_counter_findings(
         .collect()
 }
 
+fn smart_skip_reason(drive: &models::DriveInfo) -> Option<String> {
+    if drive.physical_path.contains("/virtual/") {
+        return Some("virtual block device".to_string());
+    }
+
+    let name = drive.name.as_str();
+    if name.starts_with("zram")
+        || name.starts_with("ram")
+        || name.starts_with("loop")
+        || name.starts_with("dm-")
+    {
+        return Some("virtual or mapped block device".to_string());
+    }
+
+    None
+}
+
 pub fn payload_json(payload: &models::TuxPayload) -> Result<String, serde_json::Error> {
     serde_json::to_string_pretty(payload)
 }
@@ -292,4 +341,53 @@ pub async fn analyze_payload(payload: &models::TuxPayload) -> Result<String, Str
 
 pub async fn analyze_payload_quiet(payload: &models::TuxPayload) -> Result<String, String> {
     ai::analyzer::get_analysis_quiet(payload).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_drive(name: &str, physical_path: &str) -> models::DriveInfo {
+        models::DriveInfo {
+            name: name.to_string(),
+            drive_type: "disk".to_string(),
+            connection: "Internal".to_string(),
+            capacity_gb: 1,
+            usage_percent: 0,
+            health_ok: true,
+            physical_path: physical_path.to_string(),
+            fstype: None,
+            uuid: None,
+            label: None,
+            active_mountpoints: Vec::new(),
+            topology: Vec::new(),
+            pcie_path: Vec::new(),
+            serial: None,
+            smartctl_exit_code: None,
+            smart: None,
+            parent: None,
+            is_luks: None,
+        }
+    }
+
+    #[test]
+    fn skips_virtual_block_devices_for_smart() {
+        let drive = test_drive("zram0", "/sys/devices/virtual/block/zram0");
+        assert_eq!(
+            smart_skip_reason(&drive).as_deref(),
+            Some("virtual block device")
+        );
+    }
+
+    #[test]
+    fn classifies_not_applicable_smart_as_info() {
+        let mut drive = test_drive("zram0", "/sys/devices/virtual/block/zram0");
+        drive.smart = bench::smart::skipped("virtual block device").report;
+
+        let findings = build_findings(&[drive], true, &[]);
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].category, models::FindingCategory::Smart);
+        assert_eq!(findings[0].severity, models::FindingSeverity::Info);
+        assert_eq!(findings[0].recommended_action, None);
+    }
 }

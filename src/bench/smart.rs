@@ -1,5 +1,6 @@
 use crate::models::{SmartReport, SmartTransport};
 use serde_json::Value;
+use std::fs;
 use std::process::Command;
 
 #[derive(Debug, Clone)]
@@ -10,12 +11,18 @@ pub struct SmartOutcome {
     pub anomalies: Vec<String>,
 }
 
-/// Invokes S.M.A.R.T. monitoring through Polkit and captures structured smartctl JSON.
+/// Invokes S.M.A.R.T. monitoring and captures structured smartctl JSON.
 pub fn check_health(device_node: &str) -> SmartOutcome {
     let dev_path = format!("/dev/{}", device_node);
-    let output = Command::new("pkexec")
-        .args(["smartctl", "-x", "-j", &dev_path])
-        .output();
+    let use_direct_smartctl = current_euid().is_some_and(|euid| euid == 0);
+    let mut command = if use_direct_smartctl {
+        Command::new("smartctl")
+    } else {
+        let mut command = Command::new("pkexec");
+        command.arg("smartctl");
+        command
+    };
+    let output = command.args(["-x", "-j", &dev_path]).output();
 
     match output {
         Ok(out) => {
@@ -34,9 +41,7 @@ pub fn check_health(device_node: &str) -> SmartOutcome {
             if access_denied(&stderr) {
                 return unavailable_outcome(
                     Some(code),
-                    format!(
-                        "anomaly: smartctl access denied by polkit authentication on {device_node}"
-                    ),
+                    access_denied_anomaly(device_node, use_direct_smartctl),
                 );
             }
 
@@ -82,10 +87,20 @@ pub fn check_health(device_node: &str) -> SmartOutcome {
                 }
             }
         }
-        Err(err) => unavailable_outcome(
+        Err(err) => unavailable_outcome(None, execution_failed_anomaly(use_direct_smartctl, err)),
+    }
+}
+
+pub fn skipped(reason: impl Into<String>) -> SmartOutcome {
+    SmartOutcome {
+        health_ok: true,
+        exit_code: None,
+        report: Some(unavailable_report(
             None,
-            format!("anomaly: privileged execution via pkexec failed ({err})"),
-        ),
+            Vec::new(),
+            vec![format!("SMART not applicable: {}", reason.into())],
+        )),
+        anomalies: Vec::new(),
     }
 }
 
@@ -291,6 +306,35 @@ fn access_denied(stderr: &str) -> bool {
         || stderr.contains("operation not permitted")
 }
 
+fn access_denied_anomaly(device_node: &str, direct: bool) -> String {
+    if direct {
+        format!("anomaly: smartctl access denied on {device_node}")
+    } else {
+        format!("anomaly: smartctl access denied by polkit authentication on {device_node}")
+    }
+}
+
+fn execution_failed_anomaly(direct: bool, err: std::io::Error) -> String {
+    if direct {
+        format!("anomaly: smartctl execution failed ({err})")
+    } else {
+        format!("anomaly: privileged execution via pkexec failed ({err})")
+    }
+}
+
+fn current_euid() -> Option<u32> {
+    fs::read_to_string("/proc/self/status")
+        .ok()
+        .and_then(|status| euid_from_proc_status(&status))
+}
+
+fn euid_from_proc_status(status: &str) -> Option<u32> {
+    status.lines().find_map(|line| {
+        let fields = line.strip_prefix("Uid:")?;
+        fields.split_whitespace().nth(1)?.parse().ok()
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -364,5 +408,11 @@ mod tests {
         assert!(descriptions.contains(&"SMART status indicates disk failing".to_string()));
         assert!(descriptions.contains(&"SMART error log contains errors".to_string()));
         assert!(descriptions.contains(&"SMART self-test log contains errors".to_string()));
+    }
+
+    #[test]
+    fn parses_effective_uid_from_proc_status() {
+        let status = "Name:\ttuxtests\nUid:\t1000\t0\t0\t0\n";
+        assert_eq!(euid_from_proc_status(status), Some(0));
     }
 }
